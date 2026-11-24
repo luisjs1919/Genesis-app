@@ -1,0 +1,16 @@
+genesis-app/
+├── app/
+│   ├── page.tsx                 # Lienzo modular principal de Génesis
+│   ├── login/page.tsx           # Acceso y registro de usuarios
+│   └── api/
+│       └── genesis-ai/          # Endpoint para reglas y consultas con IA
+├── components/
+│   ├── Sidebar.tsx              # Páginas, cuentas y botón Restaurar Demo
+│   ├── BlockGrid.tsx            # Cuadrícula dinámica de bloques
+│   ├── CsvImporterModal.tsx     # Importador CSV con mapeo y reglas
+│   └── GenesisCopilotDrawer.tsx # Asistente IA (⌘K)
+├── lib/
+│   ├── supabase.ts              # Conexión a PostgreSQL / Auth
+│   └── genesis-engine.ts        # Cálculos de saldo, reglas y conversiones
+└── types/
+    └── genesis.ts               # Tipos de datos de Génesis

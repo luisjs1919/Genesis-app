@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resumen General — Reportes y Rango de Fechas</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-app: #090d16;
+      --bg-card: #0f172a;
+      --bg-card-alt: #131c31;
+      --bg-input: #1e293b;
+      --border-subtle: #1e293b;
+      --border-hover: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-indigo: #4f46e5;
+      --accent-indigo-hover: #4338ca;
+      --accent-purple: #6366f1;
+      --pos: #34d399;
+      --neg: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, sans-serif; }
+
+    body {
+      background: var(--bg-app);
+      color: var(--text-main);
+      padding: 20px;
+    }
+
+    .dashboard-wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    /* Top Header matching screenshot */
+    .top-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .header-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .badge-admin {
+      background: #312e81;
+      color: #c7d2fe;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #4338ca;
+    }
+
+    .rate-pill {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover { background: var(--bg-input); border-color: var(--border-hover); }
+
+    .btn-primary {
+      background: var(--accent-indigo);
+      border-color: var(--accent-purple);
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: var(--accent-indigo-hover); }
+
+    .btn-save-excel {
+      background: #065f46;
+      border-color: #10b981;
+      color: #ecfdf5;
+    }
+    .btn-save-excel:hover { background: #047857; }
+
+    /* Report Controls Bar */
+    .report-toolbar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .control-input, .control-select {
+      background: var(--bg-input);
+      border: 1px solid var(--border-hover);
+      color: var(--text-main);
+      font-size: 13px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      outline: none;
+      width: 100%;
+    }
+
+    .control-input:focus, .control-select:focus {
+      border-color: var(--accent-purple);
+    }
+
+    /* Grid Cards matching screenshot */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 820px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .kpi-value {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+
+    .dist-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+    }
+    .dist-row:last-child { border-bottom: none; }
+
+    /* Report Preview Box */
+    .report-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+
+    .report-box-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .report-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.16);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: var(--bg-card-alt);
+    }
+
+    .num-right { text-align: right; }
+
+    .saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .saved-item {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-subtle);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; color: #000; padding: 0; }
+      .card, .report-box { background: #fff; color: #000; border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-wrap">
+    <!-- Encabezado similar a la captura -->
+    <div class="top-header">
+      <div class="header-left">
+        <div class="page-title">Resumen General</div>
+        <span class="badge-admin">administrador (Administrador)</span>
+        <span class="rate-pill">Tasa VES: Bs. 890.00 / USD</span>
+      </div>
+      <div class="header-actions no-print">
+        <button class="btn" type="button" onclick="window.print()">Imprimir / Hoja</button>
+        <button class="btn btn-save-excel" type="button" onclick="guardarExcelEnApp()">Guardar en Excel (App)</button>
+        <button class="btn btn-primary" type="button" onclick="renderizarReporte()">+ Generar Reporte</button>
+      </div>
+    </div>
+
+    <!-- Barra de opciones: Simple / Detallado, Rango Desde -> Hasta, Periodos, Hoja Carta/Oficio -->
+    <div class="report-toolbar no-print">
+      <div class="control-group">
+        <label class="control-label" for="tipoReporte">Tipo de Reporte</label>
+        <select id="tipoReporte" class="control-select" onchange="renderizarReporte()">
+          <option value="simple">Reporte Simple (Ingresos y Egresos)</option>
+          <option value="detallado" selected>Reporte Detallado (Productos y Pagos)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="presetPeriodo">Atajo / Periodo</label>
+        <select id="presetPeriodo" class="control-select" onchange="aplicarAtajoPeriodo()">
+          <option value="rango" selected>Rango Específico (Desde - Hasta)</option>
+          <option value="1d">1 Día (Hoy)</option>
+          <option value="7d">Semanal (7 días)</option>
+          <option value="30d">Mensual (30 días)</option>
+          <option value="90d">Trimestral (3 meses)</option>
+          <option value="180d">6 Meses</option>
+          <option value="365d">12 Meses</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="fechaDesde">Desde (Fecha Específica)</label>
+        <input id="fechaDesde" type="date" class="control-input" value="2026-11-01" onchange="renderizarReporte()" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="fechaHasta">Hasta (Fecha Específica)</label>
+        <input id="fechaHasta" type="date" class="control-input" value="2026-11-21" onchange="renderizarReporte()" />
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="formatoHoja">Hoja de Impresión</label>
+        <select id="formatoHoja" class="control-select" onchange="aplicarFormatoHoja()">
+          <option value="letter portrait" selected>Hoja Carta (Letter)</option>
+          <option value="legal portrait">Hoja Oficio (Legal)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tarjetas superiores estilo captura -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">PATRIMONIO NETO (RANGO SELECCIONADO)</span>
+        </div>
+        <div id="kpiNeto" class="kpi-value">$0.00</div>
+        <div id="kpiNetoSub" class="kpi-sub">Saldo consolidado del rango</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">INGRESOS DEL RANGO</span>
+        </div>
+        <div id="kpiIngresos" class="kpi-value pos">+$0.00</div>
+        <div id="kpiIngresosSub" class="kpi-sub">Total entradas registradas</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">GASTOS / EGRESOS DEL RANGO</span>
+        </div>
+        <div id="kpiGastos" class="kpi-value neg">-$0.00</div>
+        <div id="kpiGastosSub" class="kpi-sub">Total salidas registradas</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">DISTRIBUCIÓN POR PRODUCTO / RUBRO</span>
+        </div>
+        <div id="distribucionBox"></div>
+      </div>
+    </div>
+
+    <!-- Vista dinámica del Reporte Simple o Detallado -->
+    <div class="report-box">
+      <div class="report-box-top">
+        <div>
+          <strong id="tituloVistaReporte">Reporte Detallado</strong>
+          <div id="subtituloVistaReporte" class="kpi-sub">Rango seleccionado</div>
+        </div>
+        <span id="badgeResumenConteo" class="report-badge">0 registros</span>
+      </div>
+      <div id="contenedorTablaReporte"></div>
+    </div>
+
+    <!-- Archivos Excel guardados en la aplicación para solicitar cuando deseen -->
+    <div class="report-box no-print">
+      <div class="report-box-top">
+        <div>
+          <strong>Archivos Excel Guardados en la Aplicación</strong>
+          <div class="kpi-sub">Solicita o descarga cualquiera de los reportes generados cuando lo deseen</div>
+        </div>
+      </div>
+      <div id="listaGuardados" class="saved-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'app_resumen_general_excels_v4';
+    const HOY = '2026-11-21';
+
+    // Datos de ejemplo (reemplazar por los movimientos reales de la app)
+    const MOVIMIENTOS = [
+      { fecha: '2026-11-21', tipo: 'ingreso', producto: 'Desengrasante Industrial 20L', cantidad: 12, metodoPago: 'Zinli', monto: 540.00, egresoAsociado: 195.00 },
+      { fecha: '2026-11-21', tipo: 'ingreso', producto: 'Cera Automotriz Premium', cantidad: 20, metodoPago: 'Efectivo', monto: 360.00, egresoAsociado: 115.00 },
+      { fecha: '2026-11-21', tipo: 'egreso', producto: 'Insumos / Logística Diaria', cantidad: 1, metodoPago: 'Transferencia', monto: 520.00, egresoAsociado: 520.00 },
+      { fecha: '2026-11-18', tipo: 'ingreso', producto: 'Limpiador de Serpentines', cantidad: 35, metodoPago: 'Pago Móvil', monto: 770.00, egresoAsociado: 290.00 },
+      { fecha: '2026-11-14', tipo: 'ingreso', producto: 'Kit Limpieza Hogar / Oficina', cantidad: 25, metodoPago: 'PayPal', monto: 700.00, egresoAsociado: 260.00 },
+      { fecha: '2026-11-08', tipo: 'ingreso', producto: 'Desengrasante Industrial 20L', cantidad: 30, metodoPago: 'Transferencia', monto: 1350.00, egresoAsociado: 540.00 },
+      { fecha: '2026-10-15', tipo: 'ingreso', producto: 'Cera Automotriz Premium', cantidad: 80, metodoPago: 'Efectivo', monto: 1440.00, egresoAsociado: 520.00 },
+      { fecha: '2026-08-20', tipo: 'ingreso', producto: 'Desengrasante Industrial 20L', cantidad: 150, metodoPago: 'Transferencia', monto: 6750.00, egresoAsociado: 2700.00 },
+      { fecha: '2026-03-15', tipo: 'ingreso', producto: 'Kit Limpieza Hogar / Oficina', cantidad: 220, metodoPago: 'Zinli', monto: 6160.00, egresoAsociado: 2400.00 },
+    ];
+
+    let stylePageEl = null;
+    function aplicarFormatoHoja() {
+      const cssSize = document.getElementById('formatoHoja').value;
+      if (!stylePageEl) {
+        stylePageEl = document.createElement('style');
+        document.head.appendChild(stylePageEl);
+      }
+      stylePageEl.textContent = `@media print { @page { size: ${cssSize}; margin: 12mm; } }`;
+    }
+
+    function aplicarAtajoPeriodo() {
+      const preset = document.getElementById('presetPeriodo').value;
+      const hastaInput = document.getElementById('fechaHasta');
+      const desdeInput = document.getElementById('fechaDesde');
+      hastaInput.value = HOY;
+
+      const mapDias = { '1d': 0, '7d': 6, '30d': 29, '90d': 89, '180d': 179, '365d': 364 };
+      if (preset in mapDias) {
+        const ref = new Date(`${HOY}T00:00:00`);
+        ref.setDate(ref.getDate() - mapDias[preset]);
+        desdeInput.value = ref.toISOString().slice(0, 10);
+      }
+      renderizarReporte();
+    }
+
+    function obtenerDatosFiltrados() {
+      const desdeStr = document.getElementById('fechaDesde').value;
+      const hastaStr = document.getElementById('fechaHasta').value;
+      const desde = desdeStr ? new Date(`${desdeStr}T00:00:00`) : null;
+      const hasta = hastaStr ? new Date(`${hastaStr}T23:59:59`) : null;
+
+      const filtrados = MOVIMIENTOS.filter((m) => {
+        const f = new Date(`${m.fecha}T12:00:00`);
+        if (desde && f < desde) return false;
+        if (hasta && f > hasta) return false;
+        return true;
+      });
+
+      const ingresos = filtrados.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
+      const gastos = filtrados.filter((m) => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
+      const neto = ingresos - gastos;
+
+      const ventas = filtrados.filter((m) => m.tipo === 'ingreso');
+      const totalUnidades = ventas.reduce((s, v) => s + Number(v.cantidad || 0), 0);
+      const totalPagos = ventas.length;
+
+      return { desdeStr, hastaStr, filtrados, ventas, ingresos, gastos, neto, totalUnidades, totalPagos };
+    }
+
+    function fmtMoney(n) {
+      return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderizarReporte() {
+      aplicarFormatoHoja();
+      const tipo = document.getElementById('tipoReporte').value;
+      const d = obtenerDatosFiltrados();
+
+      document.getElementById('kpiNeto').textContent = `${d.neto < 0 ? '-' : ''}$${fmtMoney(Math.abs(d.neto))}`;
+      document.getElementById('kpiIngresos').textContent = `+$${fmtMoney(d.ingresos)}`;
+      document.getElementById('kpiGastos').textContent = `-$${fmtMoney(d.gastos)}`;
+
+      const rangoTexto = `Desde ${d.desdeStr || 'inicio'} hasta ${d.hastaStr || 'hoy'}`;
+      document.getElementById('kpiNetoSub').textContent = `Balance neto (${rangoTexto})`;
+      document.getElementById('kpiIngresosSub').textContent = `${d.totalPagos} pagos / ${d.totalUnidades} unidades vendidas`;
+
+      // Distribución por producto
+      const porProd = {};
+      d.ventas.forEach((v) => {
+        porProd[v.producto] = (porProd[v.producto] || 0) + v.monto;
+      });
+      const distBox = document.getElementById('distribucionBox');
+      const entries = Object.entries(porProd);
+      distBox.innerHTML = entries.length
+        ? entries.map(([prod, val]) => {
+            const pct = d.ingresos > 0 ? Math.round((val / d.ingresos) * 100) : 0;
+            return `<div class="dist-row"><span>${prod}</span><strong>$${fmtMoney(val)} (${pct}%)</strong></div>`;
+          }).join('')
+        : `<div class="kpi-sub">Sin ventas en el rango seleccionado</div>`;
+
+      const tablaCont = document.getElementById('contenedorTablaReporte');
+      if (tipo === 'simple') {
+        document.getElementById('tituloVistaReporte').textContent = 'Reporte Simple — Ingresos y Egresos';
+        document.getElementById('subtituloVistaReporte').textContent = rangoTexto;
+        document.getElementById('badgeResumenConteo').textContent = 'Resumen Simple';
+        tablaCont.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Rango Seleccionado</th>
+                <th class="num-right">Ingresos ($)</th>
+                <th class="num-right">Egresos ($)</th>
+                <th class="num-right">Balance Neto ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${rangoTexto}</td>
+                <td class="num-right pos">+$${fmtMoney(d.ingresos)}</td>
+                <td class="num-right neg">-$${fmtMoney(d.gastos)}</td>
+                <td class="num-right"><strong>$${fmtMoney(d.neto)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else {
+        document.getElementById('tituloVistaReporte').textContent = 'Reporte Detallado — Productos Vendidos, Cantidades y Pagos';
+        document.getElementById('subtituloVistaReporte').textContent = `${rangoTexto} | Total unidades: ${d.totalUnidades} | Pagos realizados: ${d.totalPagos}`;
+        document.getElementById('badgeResumenConteo').textContent = `${d.ventas.length} ventas detalladas`;
+        tablaCont.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto Vendido</th>
+                <th class="num-right">Cantidad Producto</th>
+                <th>Pago Realizado</th>
+                <th class="num-right">Ingreso ($)</th>
+                <th class="num-right">Egreso Asoc. ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${d.ventas.length ? d.ventas.map((v) => `
+                <tr>
+                  <td>${v.fecha}</td>
+                  <td><strong>${v.producto}</strong></td>
+                  <td class="num-right">${v.cantidad}</td>
+                  <td>${v.metodoPago}</td>
+                  <td class="num-right pos">+$${fmtMoney(v.monto)}</td>
+                  <td class="num-right neg">-$${fmtMoney(v.egresoAsociado)}</td>
+                </tr>
+              `).join('') : `<tr><td colspan="6" class="kpi-sub">No hay registros en el rango de fechas elegido.</td></tr>`}
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    function guardarExcelEnApp() {
+      const tipo = document.getElementById('tipoReporte').value;
+      const hoja = document.getElementById('formatoHoja').selectedOptions[0].text;
+      const d = obtenerDatosFiltrados();
+      const wb = XLSX.utils.book_new();
+
+      const wsSimple = XLSX.utils.json_to_sheet([{
+        Tipo_Reporte: tipo,
+        Formato_Hoja: hoja,
+        Fecha_Desde: d.desdeStr,
+        Fecha_Hasta: d.hastaStr,
+        Ingresos: d.ingresos,
+        Egresos: d.gastos,
+        Balance_Neto: d.neto,
+        Cantidad_Productos: d.totalUnidades,
+        Pagos_Realizados: d.totalPagos,
+      }]);
+      XLSX.utils.book_append_sheet(wb, wsSimple, 'Reporte Simple');
+
+      const filasDet = d.ventas.map((v) => ({
+        Fecha: v.fecha,
+        Producto_Vendido: v.producto,
+        Cantidad_Producto: v.cantidad,
+        Pago_Realizado: v.metodoPago,
+        Ingreso: v.monto,
+        Egreso_Asociado: v.egresoAsociado,
+      }));
+      const wsDet = XLSX.utils.json_to_sheet(filasDet.length ? filasDet : [{ Nota: 'Sin ventas en el rango' }]);
+      XLSX.utils.book_append_sheet(wb, wsDet, 'Detallado Productos');
+
+      const nombreArchivo = `reporte_${tipo}_${d.desdeStr}_a_${d.hastaStr}.xlsx`;
+      const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+
+      const guardados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      guardados.unshift({
+        id: `rep_${Date.now()}`,
+        nombreArchivo,
+        tipo,
+        rango: `${d.desdeStr} -> ${d.hastaStr}`,
+        guardadoEn: new Date().toLocaleString(),
+        base64,
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(guardados.slice(0, 40)));
+
+      XLSX.writeFile(wb, nombreArchivo);
+      renderizarGuardados();
+    }
+
+    function renderizarGuardados() {
+      const box = document.getElementById('listaGuardados');
+      const guardados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      if (!guardados.length) {
+        box.innerHTML = `<div class="kpi-sub">Aún no has guardado reportes en Excel dentro de la aplicación.</div>`;
+        return;
+      }
+      box.innerHTML = guardados.map((item) => `
+        <div class="saved-item">
+          <div>
+            <strong>${item.nombreArchivo}</strong>
+            <span class="kpi-sub"> (${item.tipo.toUpperCase()} | ${item.rango} | ${item.guardadoEn})</span>
+          </div>
+          <button class="btn" type="button" onclick="solicitarArchivo('${item.id}')">Solicitar / Descargar</button>
+        </div>
+      `).join('');
+    }
+
+    function solicitarArchivo(id) {
+      const guardados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const found = guardados.find((g) => g.id === id);
+      if (!found) return;
+      const wb = XLSX.read(found.base64, { type: 'base64' });
+      XLSX.writeFile(wb, found.nombreArchivo);
+    }
+
+    renderizarReporte();
+    renderizarGuardados();
+  </script>
+</body>
+</html>

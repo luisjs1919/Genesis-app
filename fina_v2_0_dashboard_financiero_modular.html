@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fina v2.0 — Finanzas Personales Modulares</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js para gráficos financieros limpios y responsivos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        fina: {
+                            bg: '#FFFFFF',
+                            card: '#F9FAFB',
+                            border: '#E5E7EB',
+                            darkBg: '#0F1115',
+                            darkCard: '#161920',
+                            darkBorder: '#262A34',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Tipografía tabular obligatoria para alineación perfecta de cifras */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Scrollbars minimalistas estilo Notion */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.35);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.6);
+        }
+
+        /* Animación suave para aparición de bloques y modales */
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .block-enter {
+            animation: fadeSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Transición sutil de controles al hacer hover sobre un bloque */
+        .modular-block .block-actions {
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .modular-block:hover .block-actions,
+        .modular-block:focus-within .block-actions {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .modular-block .block-actions {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-[#0F1115] text-gray-900 dark:text-gray-100 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900/50 dark:selection:text-indigo-200 transition-colors duration-200">
+
+    <!-- Notificación Toast Flotante -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Layout Principal -->
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Backdrop móvil para barra lateral -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden backdrop-blur-xs transition-opacity"></div>
+
+        <!-- BARRA LATERAL IZQUIERDA (250px colapsable) -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-[250px] shrink-0 bg-[#F9FAFB] dark:bg-[#13161C] border-r border-[#E5E7EB] dark:border-[#262A34] flex flex-col justify-between transition-transform duration-200 -translate-x-full lg:translate-x-0">
+            
+            <!-- Parte Superior: Workspace, Cuentas, Páginas y Navegación -->
+            <div class="p-3 flex flex-col gap-5 overflow-y-auto">
+                
+                <!-- Selector de Espacio de Trabajo -->
+                <div class="relative">
+                    <button onclick="toggleWorkspaceMenu()" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-200/60 dark:hover:bg-gray-800/70 transition-colors text-left">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-7 h-7 rounded-lg bg-gray-900 dark:bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                                F
+                            </div>
+                            <div class="truncate">
+                                <p id="current-workspace-name" class="text-sm font-semibold truncate leading-tight">Espacio Personal</p>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">v2.0 · Guardado local</p>
+                            </div>
+                        </div>
+                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400 shrink-0"></i>
+                    </button>
+
+                    <!-- Dropdown de Workspace -->
+                    <div id="workspace-dropdown" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#2D323E] rounded-xl shadow-lg p-1.5 z-50">
+                        <button onclick="switchWorkspace('Espacio Personal')" class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <span>Espacio Personal</span>
+                            <i data-lucide="check" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        </button>
+                        <button onclick="switchWorkspace('Finanzas Familiares')" class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                            <span>Finanzas Familiares</span>
+                        </button>
+                        <button onclick="switchWorkspace('Negocio / Freelance')" class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                            <span>Negocio / Freelance</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navegación Principal -->
+                <nav class="flex flex-col gap-0.5">
+                    <p class="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Menú</p>
+                    <button onclick="setActiveNav('resumen')" data-nav="resumen" class="nav-item active flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium bg-gray-200/70 dark:bg-gray-800 text-gray-900 dark:text-white transition-colors">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-gray-700 dark:text-gray-300"></i>
+                        <span>Resumen</span>
+                    </button>
+                    <button onclick="setActiveNav('transacciones')" data-nav="transacciones" class="nav-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 transition-colors">
+                        <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+                        <span>Transacciones</span>
+                    </button>
+                    <button onclick="setActiveNav('cuentas')" data-nav="cuentas" class="nav-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 transition-colors">
+                        <i data-lucide="landmark" class="w-4 h-4"></i>
+                        <span>Cuentas</span>
+                    </button>
+                    <button onclick="setActiveNav('reglas')" data-nav="reglas" class="nav-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 transition-colors">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        <span>Reglas IA</span>
+                    </button>
+                </nav>
+
+                <!-- Páginas Personalizadas estilo Notion -->
+                <div class="flex flex-col gap-0.5">
+                    <div class="flex items-center justify-between px-2.5 pb-1">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Páginas</p>
+                        <button onclick="createNewPage()" title="Nueva página" class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <div id="pages-list" class="flex flex-col gap-0.5">
+                        <!-- Renderizado dinámicamente por JS -->
+                    </div>
+                </div>
+
+                <!-- Saldos Rápidos por Cuenta / Billetera -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center justify-between px-2.5 pb-0.5">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Cuentas y Billeteras</p>
+                        <button onclick="openNewAccountModal()" title="Nueva cuenta" class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <div id="sidebar-accounts-list" class="flex flex-col gap-1">
+                        <!-- Renderizado dinámicamente por JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parte Inferior: Asistente IA, Respaldo/CSV y Restaurar Demo -->
+            <div class="p-3 border-t border-[#E5E7EB] dark:border-[#262A34] flex flex-col gap-2">
+                <button onclick="toggleAIDrawer()" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 transition-colors text-xs font-semibold">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                        Asistente IA Fina
+                    </span>
+                    <span class="px-1.5 py-0.5 text-[10px] rounded bg-indigo-200/70 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200">⌘K</span>
+                </button>
+
+                <!-- Acciones de Respaldo y Restauración -->
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="exportBackupJSON()" title="Exportar respaldo completo en JSON" class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#262A34] bg-white dark:bg-[#1C2029] hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                        <i data-lucide="download" class="w-3 h-3"></i>
+                        <span>JSON</span>
+                    </button>
+                    <button onclick="exportTransactionsCSV()" title="Exportar transacciones en CSV" class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#262A34] bg-white dark:bg-[#1C2029] hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                        <i data-lucide="file-spreadsheet" class="w-3 h-3"></i>
+                        <span>CSV</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between px-1 pt-0.5">
+                    <button onclick="restoreDemoData()" class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 px-1.5 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+                        <span>Restaurar Demo</span>
+                    </button>
+
+                    <button onclick="toggleDarkMode()" title="Cambiar tema claro/oscuro" class="p-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#262A34] bg-white dark:bg-[#1C2029] hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors">
+                        <i id="theme-icon" data-lucide="moon" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL DERECHA -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            <!-- CABECERA SUPERIOR STICKY (60px) -->
+            <header class="h-[60px] shrink-0 bg-white/90 dark:bg-[#0F1115]/90 backdrop-blur-md border-b border-[#E5E7EB] dark:border-[#262A34] px-4 lg:px-8 flex items-center justify-between gap-3 z-20">
+                
+                <!-- Izquierda: Botón Hamburguesa (móvil) + Título Editable estilo Notion -->
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <span id="page-emoji" class="text-lg select-none">📊</span>
+                    <input 
+                        id="page-title-input" 
+                        type="text" 
+                        value="Finanzas Personales" 
+                        onchange="updateCurrentPageTitle(this.value)"
+                        aria-label="Título de la página"
+                        class="text-base sm:text-lg font-semibold bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-gray-700 focus:border-indigo-500 focus:bg-gray-50 dark:focus:bg-gray-900 rounded-lg px-2 py-1 outline-none truncate max-w-[170px] sm:max-w-xs md:max-w-md transition-colors"
+                    />
+                </div>
+
+                <!-- Derecha: Selector Global de Fechas + Importar CSV + Botón "+ Añadir Bloque" -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Selector de Rango de Fechas -->
+                    <div class="relative">
+                        <select id="date-range-select" onchange="changeDateRange(this.value)" class="appearance-none bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] hover:border-gray-300 dark:hover:border-gray-600 text-xs sm:text-sm font-medium rounded-xl pl-3 pr-8 py-2 outline-none cursor-pointer transition-colors">
+                            <option value="this_month">Este mes</option>
+                            <option value="last_30">Últimos 30 días</option>
+                            <option value="this_year">Este año</option>
+                        </select>
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+
+                    <!-- Botón Importar CSV -->
+                    <button onclick="openImportCSVModal()" class="hidden sm:inline-flex items-center gap-1.5 bg-[#F9FAFB] hover:bg-gray-100 dark:bg-[#161920] dark:hover:bg-gray-800 border border-[#E5E7EB] dark:border-[#262A34] text-gray-800 dark:text-gray-200 text-xs sm:text-sm font-medium px-3 py-2 rounded-xl transition-colors">
+                        <i data-lucide="upload" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
+                        <span>Importar CSV</span>
+                    </button>
+
+                    <!-- Botón Añadir Bloque -->
+                    <button onclick="openAddBlockModal()" class="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium px-3.5 py-2 rounded-xl shadow-xs transition-all active:scale-[0.98]">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Añadir Bloque</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- LIENZO MODULAR / CONTENIDO SCROLLEABLE -->
+            <main id="main-canvas" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div class="max-w-6xl mx-auto flex flex-col gap-6">
+                    
+                    <!-- Sub-barra informativa de página / filtros activos -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="page-subtitle">Vista modular personalizable · Reorganiza o redimensiona tus bloques</span>
+                            <span id="active-account-badge" class="hidden items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-200/60 dark:border-indigo-800/40"></span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="openImportCSVModal()" class="sm:hidden inline-flex items-center gap-1 text-gray-700 dark:text-gray-300 font-medium px-2.5 py-1 rounded-lg bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34]">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                Importar CSV
+                            </button>
+                            <button onclick="openNewTransactionModal()" class="inline-flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium px-2.5 py-1 rounded-lg bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] transition-colors">
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                                Registrar movimiento
+                            </button>
+                            <button onclick="toggleAIDrawer()" class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium px-2.5 py-1 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 transition-colors">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                Preguntar a IA
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CONTENEDOR DINÁMICO DE VISTAS -->
+                    <div id="view-container">
+                        <div id="blocks-grid" class="grid grid-cols-1 md:grid-cols-12 gap-5"></div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+
+        <!-- PANEL LATERAL DERECHO: ASISTENTE IA FINANCIERO -->
+        <aside id="ai-drawer" class="fixed inset-y-0 right-0 z-50 w-full sm:w-[390px] bg-white dark:bg-[#13161C] border-l border-[#E5E7EB] dark:border-[#262A34] shadow-2xl transform translate-x-full transition-transform duration-250 flex flex-col">
+            <!-- Cabecera del Drawer IA -->
+            <div class="h-[60px] px-4 border-b border-[#E5E7EB] dark:border-[#262A34] flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold">Copiloto Financiero IA</h3>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400">Analiza y reclasifica tus movimientos</p>
+                    </div>
+                </div>
+                <button onclick="toggleAIDrawer()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Historial de Chat IA -->
+            <div id="ai-chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 text-sm">
+                <div class="bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-3.5 text-gray-700 dark:text-gray-200 leading-relaxed">
+                    👋 ¡Hola! Estoy conectado a tus cuentas y movimientos en tiempo real. Pregúntame por tus gastos o escríbeme algo como <em>"Crea regla si comercio contiene Netflix -> Entretenimiento"</em> y reclasificaré tus transacciones al instante.
+                </div>
+            </div>
+
+            <!-- Prompts Rápidos -->
+            <div class="px-4 py-2.5 border-t border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB]/50 dark:bg-[#0F1115]/50">
+                <p class="text-[11px] font-medium text-gray-400 mb-2">Sugerencias rápidas:</p>
+                <div class="flex flex-wrap gap-1.5">
+                    <button onclick="askAI('¿Cuánto gasté en comida?')" class="text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] hover:border-indigo-400 transition-colors">
+                        🍔 ¿Cuánto gasté en comida?
+                    </button>
+                    <button onclick="askAI('Analizar mi ahorro')" class="text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] hover:border-indigo-400 transition-colors">
+                        📈 Analizar mi ahorro
+                    </button>
+                    <button onclick="askAI('Crea regla si comercio contiene Uber -> Transporte')" class="text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] hover:border-indigo-400 transition-colors">
+                        ⚡ Regla Uber → Transporte
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input del Chat IA -->
+            <form onsubmit="handleAISubmit(event)" class="p-3 border-t border-[#E5E7EB] dark:border-[#262A34] flex items-center gap-2">
+                <input id="ai-input" type="text" placeholder="Pregunta o crea una regla automática..." class="flex-1 bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 transition-colors" />
+                <button type="submit" class="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shrink-0">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </aside>
+    </div>
+
+    <!-- MODAL 1: AÑADIR NUEVO BLOQUE -->
+    <div id="add-block-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl max-w-lg w-full p-5 shadow-2xl block-enter">
+            <div class="flex items-center justify-between pb-3 border-b border-[#E5E7EB] dark:border-[#262A34]">
+                <div>
+                    <h3 class="text-base font-semibold">Añadir Bloque al Lienzo</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Elige un componente modular para personalizar tu vista</p>
+                </div>
+                <button onclick="closeAddBlockModal()" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
+                <button onclick="addBlock('kpi_custom')" class="flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029] hover:border-indigo-500 text-left transition-all">
+                    <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <i data-lucide="hash" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">KPI / Tasa de Ahorro</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Porcentaje y monto neto retenido.</p>
+                    </div>
+                </button>
+
+                <button onclick="addBlock('cashflow')" class="flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029] hover:border-indigo-500 text-left transition-all">
+                    <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shrink-0">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Flujo de Caja</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Comparativa mensual de ingresos vs. gastos.</p>
+                    </div>
+                </button>
+
+                <button onclick="addBlock('categories')" class="flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029] hover:border-indigo-500 text-left transition-all">
+                    <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 shrink-0">
+                        <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Desglose por Categoría</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Distribución porcentual de tus gastos.</p>
+                    </div>
+                </button>
+
+                <button onclick="addBlock('savings_goal')" class="flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029] hover:border-indigo-500 text-left transition-all">
+                    <div class="p-2 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 shrink-0">
+                        <i data-lucide="target" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Meta de Ahorro</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Progreso visual hacia tu fondo de reserva.</p>
+                    </div>
+                </button>
+
+                <button onclick="addBlock('transactions')" class="sm:col-span-2 flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029] hover:border-indigo-500 text-left transition-all">
+                    <div class="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 shrink-0">
+                        <i data-lucide="list" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Lista de Transacciones</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tabla interactiva con filtros, edición rápida y botón + Nueva.</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: NUEVA TRANSACCIÓN -->
+    <div id="new-tx-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl max-w-md w-full p-5 shadow-2xl block-enter">
+            <div class="flex items-center justify-between pb-3 border-b border-[#E5E7EB] dark:border-[#262A34]">
+                <h3 class="text-base font-semibold">Registrar Movimiento</h3>
+                <button onclick="closeNewTransactionModal()" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleAddTransaction(event)" class="flex flex-col gap-3.5 mt-4">
+                <div class="grid grid-cols-2 gap-2 p-1 bg-[#F9FAFB] dark:bg-[#1C2029] rounded-xl border border-[#E5E7EB] dark:border-[#262A34]">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="txType" value="expense" checked class="peer hidden">
+                        <div class="text-center py-1.5 text-xs font-semibold rounded-lg peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-red-500 peer-checked:shadow-xs transition-all">
+                            Gasto (-)
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="txType" value="income" class="peer hidden">
+                        <div class="text-center py-1.5 text-xs font-semibold rounded-lg peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-emerald-500 peer-checked:shadow-xs transition-all">
+                            Ingreso (+)
+                        </div>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Comercio o Descripción</label>
+                    <input id="tx-merchant" type="text" required placeholder="Ej. Supermercado Central, Nómina..." class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Monto ($)</label>
+                        <input id="tx-amount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm tabular-nums outline-none focus:border-indigo-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Categoría</label>
+                        <select id="tx-category" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                            <option value="Comida">Comida</option>
+                            <option value="Vivienda">Vivienda</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Entretenimiento">Entretenimiento</option>
+                            <option value="Servicios">Servicios</option>
+                            <option value="Ingresos">Ingresos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cuenta / Billetera</label>
+                        <select id="tx-account" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                            <!-- Rellenado dinámicamente -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Fecha</label>
+                        <input id="tx-date" type="date" value="2026-11-20" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm tabular-nums outline-none focus:border-indigo-500" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-2">
+                    <button type="button" onclick="closeNewTransactionModal()" class="px-4 py-2 text-xs font-medium rounded-xl border border-[#E5E7EB] dark:border-[#262A34] hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-xl bg-gray-900 dark:bg-indigo-600 text-white hover:opacity-90">Guardar Movimiento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: IMPORTADOR INTERACTIVO DE ARCHIVOS CSV -->
+    <div id="import-csv-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl max-w-2xl w-full p-5 shadow-2xl block-enter max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-[#E5E7EB] dark:border-[#262A34]">
+                <div>
+                    <h3 class="text-base font-semibold">Importar Estado de Cuenta (CSV)</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Detecta separadores (<code>,</code> o <code>;</code>), mapea columnas y aplica tus reglas de IA automáticamente</p>
+                </div>
+                <button onclick="closeImportCSVModal()" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-4">
+                <!-- Zona de Carga de Archivo + Botón de Ejemplo Rápido -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl border-2 border-dashed border-[#E5E7EB] dark:border-[#262A34] bg-[#F9FAFB] dark:bg-[#1C2029]">
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">Selecciona un archivo .CSV</label>
+                        <input id="csv-file-input" type="file" accept=".csv,text/csv" onchange="handleCSVFileChange(event)" class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-950 dark:file:text-indigo-300 cursor-pointer" />
+                    </div>
+                    <button type="button" onclick="loadSampleCSV()" class="px-3 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2D323E] bg-white dark:bg-[#161920] hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-medium shrink-0">
+                        Cargar CSV de prueba
+                    </button>
+                </div>
+
+                <!-- Configuración de Separador, Mapeo de Columnas y Cuenta Destino -->
+                <div id="csv-mapping-panel" class="hidden flex-col gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Separador</label>
+                            <select id="csv-delimiter" onchange="renderCSVPreview()" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-2 text-xs outline-none">
+                                <option value="auto">Auto-detectar</option>
+                                <option value=",">Coma (,)</option>
+                                <option value=";">Punto y coma (;)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Col. Fecha *</label>
+                            <select id="csv-col-date" onchange="renderCSVPreview()" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-2 text-xs outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Col. Comercio *</label>
+                            <select id="csv-col-merchant" onchange="renderCSVPreview()" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-2 text-xs outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Col. Monto *</label>
+                            <select id="csv-col-amount" onchange="renderCSVPreview()" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-2 text-xs outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Col. Cuenta (Opc.)</label>
+                            <select id="csv-col-account" onchange="renderCSVPreview()" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-2 text-xs outline-none"></select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-800/40 rounded-xl px-3.5 py-2.5">
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Cuenta por defecto si no se mapea:</span>
+                            <select id="csv-default-account" onchange="renderCSVPreview()" class="bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-lg px-2 py-1 text-xs font-medium outline-none"></select>
+                        </div>
+                        <span id="csv-row-count" class="text-xs font-semibold text-indigo-700 dark:text-indigo-300 tabular-nums">0 filas detectadas</span>
+                    </div>
+
+                    <!-- Previsualización de Filas -->
+                    <div>
+                        <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Previsualización (primeras 6 filas con Reglas IA aplicadas):</p>
+                        <div class="overflow-x-auto border border-[#E5E7EB] dark:border-[#262A34] rounded-xl">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead class="bg-[#F9FAFB] dark:bg-[#1C2029] border-b border-[#E5E7EB] dark:border-[#262A34] text-[11px] text-gray-400 uppercase">
+                                    <tr>
+                                        <th class="py-2 px-3">Fecha</th>
+                                        <th class="py-2 px-3">Comercio</th>
+                                        <th class="py-2 px-3">Cuenta</th>
+                                        <th class="py-2 px-3">Categoría IA</th>
+                                        <th class="py-2 px-3 text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="csv-preview-body" class="divide-y divide-[#E5E7EB]/60 dark:divide-[#262A34]"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#262A34]">
+                    <button type="button" onclick="closeImportCSVModal()" class="px-4 py-2 text-xs font-medium rounded-xl border border-[#E5E7EB] dark:border-[#262A34] hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+                    <button id="csv-import-btn" type="button" onclick="confirmImportCSV()" disabled class="px-4 py-2 text-xs font-semibold rounded-xl bg-gray-900 dark:bg-indigo-600 text-white disabled:opacity-40 hover:opacity-90 transition-opacity">
+                        Importar Movimientos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: NUEVA CUENTA / BILLETERA -->
+    <div id="new-account-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl max-w-sm w-full p-5 shadow-2xl block-enter">
+            <div class="flex items-center justify-between pb-3 border-b border-[#E5E7EB] dark:border-[#262A34]">
+                <h3 class="text-base font-semibold">Añadir Cuenta o Billetera</h3>
+                <button onclick="closeNewAccountModal()" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddAccount(event)" class="flex flex-col gap-3 mt-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre de la Cuenta</label>
+                    <input id="acc-name" type="text" required placeholder="Ej. Billetera Digital, Banco Mercantil..." class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Saldo Inicial ($)</label>
+                    <input id="acc-balance" type="number" step="0.01" required placeholder="0.00" class="w-full bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-3 py-2 text-sm tabular-nums outline-none focus:border-indigo-500" />
+                </div>
+                <div class="flex justify-end gap-2 mt-2">
+                    <button type="button" onclick="closeNewAccountModal()" class="px-4 py-2 text-xs font-medium rounded-xl border border-[#E5E7EB] dark:border-[#262A34]">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-xl bg-gray-900 dark:bg-indigo-600 text-white">Crear Cuenta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT: ESTADO v2.0, LOCALSTORAGE, CSV PARSER, CUENTAS, GRÁFICOS E IA -->
+    <script>
+        const STORAGE_KEY = 'fina_v2_state_v1';
+
+        const CATEGORIES_META = {
+            'Vivienda': { color: '#4F46E5', bg: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300', icon: 'home' },
+            'Comida': { color: '#10B981', bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', icon: 'utensils' },
+            'Transporte': { color: '#F59E0B', bg: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300', icon: 'car' },
+            'Entretenimiento': { color: '#EC4899', bg: 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300', icon: 'film' },
+            'Servicios': { color: '#6366F1', bg: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300', icon: 'zap' },
+            'Ingresos': { color: '#059669', bg: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300', icon: 'wallet' }
+        };
+
+        function createDefaultState() {
+            return {
+                darkMode: false,
+                workspaceName: 'Espacio Personal',
+                activeNav: 'resumen',
+                dateRange: 'this_month',
+                searchQuery: '',
+                categoryFilter: 'ALL',
+                accountFilter: 'ALL',
+                activePageId: 'page-1',
+                pages: [
+                    {
+                        id: 'page-1',
+                        emoji: '📊',
+                        title: 'Finanzas Personales',
+                        subtitle: 'Vista general de patrimonio, flujo de caja y gastos mensuales',
+                        blocks: [
+                            { id: 'b-1', type: 'kpi_net', span: 4 },
+                            { id: 'b-2', type: 'kpi_income', span: 4 },
+                            { id: 'b-3', type: 'kpi_expense', span: 4 },
+                            { id: 'b-4', type: 'cashflow', span: 7 },
+                            { id: 'b-5', type: 'categories', span: 5 },
+                            { id: 'b-6', type: 'transactions', span: 12 }
+                        ]
+                    },
+                    {
+                        id: 'page-2',
+                        emoji: '🎯',
+                        title: 'Presupuesto Mensual',
+                        subtitle: 'Control estricto de límites por categoría y metas de ahorro',
+                        blocks: [
+                            { id: 'b-201', type: 'kpi_expense', span: 6 },
+                            { id: 'b-202', type: 'savings_goal', span: 6 },
+                            { id: 'b-203', type: 'categories', span: 12 },
+                            { id: 'b-204', type: 'transactions', span: 12 }
+                        ]
+                    },
+                    {
+                        id: 'page-3',
+                        emoji: '📈',
+                        title: 'Inversiones y Patrimonio',
+                        subtitle: 'Crecimiento de activos y evolución del saldo neto',
+                        blocks: [
+                            { id: 'b-301', type: 'kpi_net', span: 6 },
+                            { id: 'b-302', type: 'kpi_custom', span: 6 },
+                            { id: 'b-303', type: 'cashflow', span: 12 }
+                        ]
+                    }
+                ],
+                accounts: [
+                    { id: 'acc-1', name: 'Cuenta Principal', initialBalance: 8170.00, badge: 'Banco' },
+                    { id: 'acc-2', name: 'Billetera Digital', initialBalance: 3480.00, badge: 'Digital' },
+                    { id: 'acc-3', name: 'Tarjeta Crédito', initialBalance: 2200.00, badge: 'Crédito' },
+                    { id: 'acc-4', name: 'Efectivo', initialBalance: 1000.00, badge: 'Cash' }
+                ],
+                transactions: [
+                    { id: 't1', date: '2026-11-19', merchant: 'Depósito Nómina TechCorp', category: 'Ingresos', amount: 3200.00, type: 'income', account: 'Cuenta Principal' },
+                    { id: 't2', date: '2026-11-18', merchant: 'Alquiler Apartamento', category: 'Vivienda', amount: 950.00, type: 'expense', account: 'Cuenta Principal' },
+                    { id: 't3', date: '2026-11-16', merchant: 'Supermercado FreshMarket', category: 'Comida', amount: 385.50, type: 'expense', account: 'Billetera Digital' },
+                    { id: 't4', date: '2026-11-14', merchant: 'Uber & Combustible', category: 'Transporte', amount: 245.00, type: 'expense', account: 'Tarjeta Crédito' },
+                    { id: 't5', date: '2026-11-12', merchant: 'Consultoría Freelance UI', category: 'Ingresos', amount: 1000.00, type: 'income', account: 'Billetera Digital' },
+                    { id: 't6', date: '2026-11-10', merchant: 'Fibra Óptica & Electricidad', category: 'Servicios', amount: 290.00, type: 'expense', account: 'Cuenta Principal' },
+                    { id: 't7', date: '2026-11-08', merchant: 'Restaurante La Trattoria', category: 'Comida', amount: 240.00, type: 'expense', account: 'Efectivo' },
+                    { id: 't8', date: '2026-11-05', merchant: 'Cine IMAX & Spotify', category: 'Entretenimiento', amount: 230.00, type: 'expense', account: 'Tarjeta Crédito' }
+                ],
+                rules: [
+                    { id: 'r1', keyword: 'uber', condition: 'Comercio contiene "Uber"', category: 'Transporte', active: true },
+                    { id: 'r2', keyword: 'supermercado', condition: 'Comercio contiene "Supermercado"', category: 'Comida', active: true },
+                    { id: 'r3', keyword: 'restaurante', condition: 'Comercio contiene "Restaurante"', category: 'Comida', active: true }
+                ]
+            };
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return createDefaultState();
+                const parsed = JSON.parse(raw);
+                return { ...createDefaultState(), ...parsed };
+            } catch (err) {
+                console.error('Error cargando estado de localStorage:', err);
+                return createDefaultState();
+            }
+        }
+
+        let state = loadState();
+        let chartInstances = {};
+        let csvParsedData = { headers: [], rows: [] };
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (err) {
+                console.error('Error guardando en localStorage:', err);
+                showToast('Aviso: no se pudo guardar en localStorage');
+            }
+        }
+
+        function restoreDemoData() {
+            localStorage.removeItem(STORAGE_KEY);
+            state = createDefaultState();
+            applyThemeToDOM();
+            syncHeaderWithActivePage();
+            renderAll();
+            showToast('Datos de demostración restaurados');
+        }
+
+        // ==========================================
+        // 2. CÁLCULOS FINANCIEROS Y CUENTAS
+        // ==========================================
+        function getMultiplier() {
+            if (state.dateRange === 'last_30') return 0.94;
+            if (state.dateRange === 'this_year') return 11.4;
+            return 1.0;
+        }
+
+        function getAccountBalances() {
+            const map = {};
+            state.accounts.forEach(acc => {
+                map[acc.name] = acc.initialBalance;
+            });
+
+            state.transactions.forEach(tx => {
+                const accName = tx.account || 'Cuenta Principal';
+                if (typeof map[accName] !== 'number') {
+                    map[accName] = 0;
+                }
+                if (tx.type === 'income') {
+                    map[accName] += tx.amount;
+                } else {
+                    map[accName] -= tx.amount;
+                }
+            });
+            return map;
+        }
+
+        function getFilteredTransactions() {
+            return state.transactions.filter(t => {
+                const matchesSearch = !state.searchQuery ||
+                    t.merchant.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+                    t.category.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+                    (t.account || '').toLowerCase().includes(state.searchQuery.toLowerCase());
+                const matchesCat = state.categoryFilter === 'ALL' || t.category === state.categoryFilter;
+                const matchesAcc = state.accountFilter === 'ALL' || (t.account || 'Cuenta Principal') === state.accountFilter;
+                return matchesSearch && matchesCat && matchesAcc;
+            });
+        }
+
+        function getComputedMetrics() {
+            const mult = getMultiplier();
+            const txPool = state.accountFilter === 'ALL'
+                ? state.transactions
+                : state.transactions.filter(t => (t.account || 'Cuenta Principal') === state.accountFilter);
+
+            const totalIncomeTx = txPool.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+            const totalExpenseTx = txPool.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+
+            const income = totalIncomeTx * mult;
+            const expense = totalExpenseTx * mult;
+
+            const balances = getAccountBalances();
+            const netWorth = state.accountFilter === 'ALL'
+                ? Object.values(balances).reduce((a, b) => a + b, 0) + (mult > 1 ? 8400 : 0)
+                : (balances[state.accountFilter] || 0);
+
+            const savingsRate = income > 0 ? Math.max(0, ((income - expense) / income) * 100) : 0;
+
+            const categoryTotals = {};
+            txPool.filter(t => t.type === 'expense').forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + (t.amount * mult);
+            });
+
+            return {
+                netWorth,
+                income,
+                expense,
+                savingsRate,
+                categoryTotals,
+                netDelta: state.dateRange === 'this_year' ? '+28.6%' : '+12.4%',
+                incomeDelta: state.dateRange === 'this_year' ? '+14.2%' : '+5.0%',
+                expenseDelta: state.dateRange === 'last_30' ? '-4.1%' : '-8.2%'
+            };
+        }
+
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2
+            }).format(val);
+        }
+
+        // ==========================================
+        // 3. REGLAS IA Y CATEGORIZACIÓN AUTOMÁTICA
+        // ==========================================
+        function applyRulesToMerchant(merchant, type = 'expense') {
+            if (type === 'income') return 'Ingresos';
+            const lower = (merchant || '').toLowerCase();
+            for (const rule of state.rules) {
+                if (rule.active && rule.keyword && lower.includes(rule.keyword.toLowerCase())) {
+                    return rule.category;
+                }
+            }
+            if (lower.includes('super') || lower.includes('comida') || lower.includes('cafe') || lower.includes('pizza')) return 'Comida';
+            if (lower.includes('uber') || lower.includes('taxi') || lower.includes('metro') || lower.includes('gas')) return 'Transporte';
+            if (lower.includes('netflix') || lower.includes('spotify') || lower.includes('cine') || lower.includes('juego')) return 'Entretenimiento';
+            if (lower.includes('luz') || lower.includes('agua') || lower.includes('internet') || lower.includes('fibra')) return 'Servicios';
+            if (lower.includes('alquiler') || lower.includes('renta') || lower.includes('hipoteca')) return 'Vivienda';
+            return 'Servicios';
+        }
+
+        function reclassifyExistingTransactionsByRule(keyword, category) {
+            let count = 0;
+            const kw = keyword.toLowerCase();
+            state.transactions.forEach(tx => {
+                if (tx.type === 'expense' && tx.merchant.toLowerCase().includes(kw) && tx.category !== category) {
+                    tx.category = category;
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        // ==========================================
+        // 4. RENDERIZADO DE BARRA LATERAL Y PÁGINAS
+        // ==========================================
+        function renderPagesList() {
+            const container = document.getElementById('pages-list');
+            container.innerHTML = state.pages.map(page => {
+                const isActive = page.id === state.activePageId && state.activeNav === 'resumen';
+                return `
+                    <button onclick="selectPage('${page.id}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-colors ${isActive ? 'bg-gray-200/80 dark:bg-gray-800 font-medium text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'}">
+                        <span class="flex items-center gap-2 truncate">
+                            <span>${page.emoji}</span>
+                            <span class="truncate">${page.title}</span>
+                        </span>
+                        <span class="text-[10px] text-gray-400">${page.blocks.length}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderSidebarAccounts() {
+            const balances = getAccountBalances();
+            const container = document.getElementById('sidebar-accounts-list');
+
+            const allSelected = state.accountFilter === 'ALL';
+            const totalAll = Object.values(balances).reduce((a, b) => a + b, 0);
+
+            let html = `
+                <button onclick="setAccountFilter('ALL')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${allSelected ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'}">
+                    <span>Todas las cuentas</span>
+                    <span class="tabular-nums font-semibold">${formatCurrency(totalAll)}</span>
+                </button>
+            `;
+
+            html += state.accounts.map(acc => {
+                const active = state.accountFilter === acc.name;
+                const bal = balances[acc.name] ?? acc.initialBalance;
+                return `
+                    <button onclick="setAccountFilter('${acc.name.replace(/'/g, "\\'")}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${active ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'}">
+                        <span class="truncate pr-2">${acc.name}</span>
+                        <span class="tabular-nums shrink-0 ${bal < 0 ? 'text-red-500' : ''}">${formatCurrency(bal)}</span>
+                    </button>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+
+            const badge = document.getElementById('active-account-badge');
+            if (state.accountFilter !== 'ALL') {
+                badge.classList.remove('hidden');
+                badge.classList.add('inline-flex');
+                badge.innerHTML = `<i data-lucide="wallet" class="w-3 h-3"></i> Cuenta: ${state.accountFilter} <button onclick="setAccountFilter('ALL')" class="ml-1 hover:text-red-500">×</button>`;
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('inline-flex');
+            }
+        }
+
+        function setAccountFilter(accName) {
+            state.accountFilter = accName;
+            saveState();
+            renderSidebarAccounts();
+            renderBlocksGrid();
+            if (window.innerWidth < 1024) toggleSidebar(false);
+        }
+
+        function selectPage(pageId) {
+            state.activePageId = pageId;
+            state.activeNav = 'resumen';
+            saveState();
+            updateNavUI();
+            syncHeaderWithActivePage();
+            renderPagesList();
+            renderBlocksGrid();
+            if (window.innerWidth < 1024) toggleSidebar(false);
+        }
+
+        function syncHeaderWithActivePage() {
+            const page = state.pages.find(p => p.id === state.activePageId) || state.pages[0];
+            if (page) {
+                document.getElementById('page-emoji').textContent = page.emoji;
+                document.getElementById('page-title-input').value = page.title;
+                document.getElementById('page-subtitle').textContent = page.subtitle;
+            }
+            document.getElementById('current-workspace-name').textContent = state.workspaceName;
+            document.getElementById('date-range-select').value = state.dateRange;
+        }
+
+        function updateCurrentPageTitle(newTitle) {
+            const trimmed = newTitle.trim();
+            if (!trimmed) return;
+            const page = state.pages.find(p => p.id === state.activePageId);
+            if (page) {
+                page.title = trimmed;
+                saveState();
+                renderPagesList();
+                showToast('Título guardado');
+            }
+        }
+
+        function createNewPage() {
+            const emojis = ['💼', '🏡', '✈️', '💳', '🚀'];
+            const randomEmoji = emojis[state.pages.length % emojis.length];
+            const newId = 'page-' + Date.now();
+            state.pages.push({
+                id: newId,
+                emoji: randomEmoji,
+                title: `Nueva Página ${state.pages.length + 1}`,
+                subtitle: 'Espacio personalizado · Añade bloques desde el botón superior',
+                blocks: [
+                    { id: 'b-' + Date.now() + '1', type: 'kpi_net', span: 6 },
+                    { id: 'b-' + Date.now() + '2', type: 'savings_goal', span: 6 },
+                    { id: 'b-' + Date.now() + '3', type: 'transactions', span: 12 }
+                ]
+            });
+            saveState();
+            selectPage(newId);
+            showToast('Nueva página creada');
+        }
+
+        // ==========================================
+        // 5. RENDERIZADO DEL LIENZO DE BLOQUES MODULARES
+        // ==========================================
+        function destroyCharts() {
+            Object.values(chartInstances).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') chart.destroy();
+            });
+            chartInstances = {};
+        }
+
+        function renderBlocksGrid() {
+            destroyCharts();
+            const container = document.getElementById('view-container');
+
+            if (state.activeNav === 'cuentas') {
+                renderAccountsView(container);
+                return;
+            }
+            if (state.activeNav === 'reglas') {
+                renderRulesView(container);
+                return;
+            }
+            if (state.activeNav === 'transacciones') {
+                container.innerHTML = `<div id="blocks-grid" class="grid grid-cols-1 md:grid-cols-12 gap-5">${renderBlockHTML({ id: 'tx-full', type: 'transactions', span: 12 }, 0, 1)}</div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            const page = state.pages.find(p => p.id === state.activePageId) || state.pages[0];
+            if (!page.blocks.length) {
+                container.innerHTML = `
+                    <div class="border-2 border-dashed border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500">
+                            <i data-lucide="layout-grid" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-base font-semibold">Esta página está vacía</h3>
+                        <p class="text-xs text-gray-500 max-w-sm">Construye tu vista financiera añadiendo bloques de métricas, flujo de caja o listas de movimientos.</p>
+                        <button onclick="openAddBlockModal()" class="mt-2 px-4 py-2 rounded-xl bg-gray-900 dark:bg-indigo-600 text-white text-xs font-semibold">+ Añadir Primer Bloque</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            const blocksHTML = page.blocks.map((block, index) => renderBlockHTML(block, index, page.blocks.length)).join('');
+            container.innerHTML = `<div id="blocks-grid" class="grid grid-cols-1 md:grid-cols-12 gap-5">${blocksHTML}</div>`;
+
+            lucide.createIcons();
+            initBlockCharts(page.blocks);
+        }
+
+        function renderBlockHTML(block, index, total) {
+            const metrics = getComputedMetrics();
+            const spanMap = {
+                4: 'md:col-span-4',
+                5: 'md:col-span-5',
+                6: 'md:col-span-6',
+                7: 'md:col-span-7',
+                12: 'md:col-span-12'
+            };
+            const colSpanClass = spanMap[block.span] || 'md:col-span-6';
+
+            const toolbar = `
+                <div class="block-actions flex items-center gap-1 bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#2D323E] rounded-lg p-0.5 shadow-xs">
+                    ${index > 0 ? `<button onclick="moveBlock('${block.id}', -1)" title="Mover arriba/izquierda" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500"><i data-lucide="arrow-up-left" class="w-3 h-3"></i></button>` : ''}
+                    ${index < total - 1 ? `<button onclick="moveBlock('${block.id}', 1)" title="Mover abajo/derecha" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500"><i data-lucide="arrow-down-right" class="w-3 h-3"></i></button>` : ''}
+                    <button onclick="toggleBlockWidth('${block.id}')" title="Cambiar ancho" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500">
+                        <i data-lucide="${block.span === 12 ? 'minimize-2' : 'maximize-2'}" class="w-3 h-3"></i>
+                    </button>
+                    <button onclick="removeBlock('${block.id}')" title="Eliminar bloque" class="p-1 hover:bg-red-50 dark:hover:bg-red-950/50 rounded text-gray-400 hover:text-red-500">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            `;
+
+            if (block.type === 'kpi_net') {
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between transition-all hover:border-gray-300 dark:hover:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                Saldo Neto
+                            </span>
+                            ${toolbar}
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between gap-2">
+                            <p class="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums">${formatCurrency(metrics.netWorth)}</p>
+                            <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100/80 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 tabular-nums">
+                                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                                ${metrics.netDelta}
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-2">Consolidado de cuentas · Guardado en localStorage</p>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'kpi_income') {
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between transition-all hover:border-gray-300 dark:hover:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Ingresos del Período
+                            </span>
+                            ${toolbar}
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between gap-2">
+                            <p class="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">${formatCurrency(metrics.income)}</p>
+                            <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100/80 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 tabular-nums">
+                                <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
+                                ${metrics.incomeDelta}
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-2">Entradas registradas o importadas</p>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'kpi_expense') {
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between transition-all hover:border-gray-300 dark:hover:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                Gastos del Período
+                            </span>
+                            ${toolbar}
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between gap-2">
+                            <p class="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums">${formatCurrency(metrics.expense)}</p>
+                            <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100/80 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 tabular-nums">
+                                <i data-lucide="trending-down" class="w-3 h-3"></i>
+                                ${metrics.expenseDelta}
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-2">Egresos categorizados en el período</p>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'kpi_custom') {
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between transition-all hover:border-gray-300 dark:hover:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                Tasa de Ahorro Neta
+                            </span>
+                            ${toolbar}
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between gap-2">
+                            <p class="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums">${metrics.savingsRate.toFixed(1)}%</p>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 tabular-nums">
+                                ${formatCurrency(Math.max(0, metrics.income - metrics.expense))} neto
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-2">Meta sugerida Fina: 20.0%</p>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'savings_goal') {
+                const saved = Math.max(0, Math.round(metrics.netWorth * 0.55));
+                const target = 12000;
+                const pct = Math.min(100, Math.round((saved / target) * 100));
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between">
+                        <div class="flex items-center justify-between gap-2">
+                            <div>
+                                <h3 class="text-sm font-semibold">Fondo de Emergencia (6 Meses)</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Meta automática · Aporte recurrente</p>
+                            </div>
+                            ${toolbar}
+                        </div>
+                        <div class="my-4">
+                            <div class="flex justify-between text-xs font-semibold mb-1.5 tabular-nums">
+                                <span>${formatCurrency(saved)} asignados</span>
+                                <span class="text-indigo-600 dark:text-indigo-400">${pct}% de ${formatCurrency(target)}</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div class="h-full bg-indigo-600 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400">Proyección calculada sobre tu patrimonio actual</p>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'cashflow') {
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col">
+                        <div class="flex items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="text-sm font-semibold">Flujo de Caja (6 Meses)</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Comparativa mensual de ingresos vs. gastos</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="hidden sm:flex items-center gap-3 text-[11px] font-medium">
+                                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-emerald-500"></span>Ingresos</span>
+                                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-red-400"></span>Gastos</span>
+                                </div>
+                                ${toolbar}
+                            </div>
+                        </div>
+                        <div class="relative w-full h-[230px]">
+                            <canvas id="chart-${block.id}"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'categories') {
+                const entries = Object.entries(metrics.categoryTotals).sort((a, b) => b[1] - a[1]);
+                const totalExp = entries.reduce((acc, [, v]) => acc + v, 0) || 1;
+
+                const legendHTML = entries.length ? entries.map(([cat, amount]) => {
+                    const pct = ((amount / totalExp) * 100).toFixed(1);
+                    const meta = CATEGORIES_META[cat] || { color: '#6B7280' };
+                    return `
+                        <div class="flex items-center justify-between text-xs py-1">
+                            <span class="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${meta.color}"></span>
+                                ${cat}
+                            </span>
+                            <div class="flex items-center gap-2.5 tabular-nums">
+                                <span class="text-gray-400">${pct}%</span>
+                                <span class="font-semibold">${formatCurrency(amount)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('') : `<p class="text-xs text-gray-400 py-4 text-center">Sin gastos registrados en este filtro.</p>`;
+
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col">
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h3 class="text-sm font-semibold">Desglose por Categoría</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Distribución del gasto actual</p>
+                            </div>
+                            ${toolbar}
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center my-auto">
+                            <div class="sm:col-span-5 relative h-[165px] flex items-center justify-center">
+                                <canvas id="chart-${block.id}"></canvas>
+                            </div>
+                            <div class="sm:col-span-7 flex flex-col divide-y divide-gray-200/60 dark:divide-gray-800">
+                                ${legendHTML}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (block.type === 'transactions') {
+                const filtered = getFilteredTransactions();
+
+                const rowsHTML = filtered.length ? filtered.map(tx => {
+                    const meta = CATEGORIES_META[tx.category] || CATEGORIES_META['Servicios'];
+                    const isIncome = tx.type === 'income';
+                    const catOptions = Object.keys(CATEGORIES_META).map(c =>
+                        `<option value="${c}" ${c === tx.category ? 'selected' : ''}>${c}</option>`
+                    ).join('');
+
+                    return `
+                        <tr class="hover:bg-white dark:hover:bg-[#1C2029] transition-colors group">
+                            <td class="py-3 px-4 text-xs text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">${tx.date}</td>
+                            <td class="py-3 px-4">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-[#E5E7EB] dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                                        <i data-lucide="${meta.icon}" class="w-3.5 h-3.5"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">${tx.merchant}</p>
+                                        <p class="text-[11px] text-gray-400 sm:hidden">${tx.account || 'Cuenta Principal'}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4">
+                                <select onchange="updateTransactionCategory('${tx.id}', this.value)" aria-label="Cambiar categoría" class="text-xs font-medium px-2.5 py-1 rounded-full cursor-pointer outline-none border border-transparent hover:border-gray-300 dark:hover:border-gray-600 transition-colors ${meta.bg}">
+                                    ${catOptions}
+                                </select>
+                            </td>
+                            <td class="py-3 px-4 text-xs text-gray-500 dark:text-gray-400 hidden sm:table-cell">${tx.account || 'Cuenta Principal'}</td>
+                            <td class="py-3 px-4 text-right text-xs sm:text-sm font-semibold tabular-nums whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-gray-100'}">
+                                ${isIncome ? '+' : '-'}${formatCurrency(tx.amount)}
+                            </td>
+                        </tr>
+                    `;
+                }).join('') : `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-xs text-gray-500">No se encontraron transacciones con los filtros actuales.</td>
+                    </tr>
+                `;
+
+                return `
+                    <div class="modular-block ${colSpanClass} bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl overflow-hidden flex flex-col">
+                        <div class="p-4 sm:p-5 border-b border-[#E5E7EB] dark:border-[#262A34] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold">Transacciones (${filtered.length})</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Edita categorías en línea, importa CSV o añade movimientos</p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="relative flex-1 sm:flex-initial">
+                                    <i data-lucide="search" class="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                    <input
+                                        type="text"
+                                        value="${state.searchQuery}"
+                                        oninput="handleSearchTx(this.value)"
+                                        placeholder="Buscar comercio..."
+                                        class="w-full sm:w-40 bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <select onchange="handleFilterCategory(this.value)" class="bg-white dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer">
+                                    <option value="ALL" ${state.categoryFilter === 'ALL' ? 'selected' : ''}>Todas las categorías</option>
+                                    ${Object.keys(CATEGORIES_META).map(c => `<option value="${c}" ${state.categoryFilter === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                </select>
+
+                                <button onclick="openNewTransactionModal()" class="inline-flex items-center gap-1 bg-gray-900 dark:bg-indigo-600 hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-xl transition-opacity">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    <span>+ Nueva</span>
+                                </button>
+
+                                ${block.id !== 'tx-full' ? toolbar : ''}
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-[#E5E7EB] dark:border-[#262A34] text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                                        <th class="py-2.5 px-4">Fecha</th>
+                                        <th class="py-2.5 px-4">Comercio</th>
+                                        <th class="py-2.5 px-4">Categoría</th>
+                                        <th class="py-2.5 px-4 hidden sm:table-cell">Cuenta</th>
+                                        <th class="py-2.5 px-4 text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#E5E7EB]/70 dark:divide-[#262A34]">
+                                    ${rowsHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        // ==========================================
+        // 6. GRÁFICOS (CHART.JS)
+        // ==========================================
+        function initBlockCharts(blocks) {
+            const metrics = getComputedMetrics();
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+            const tickColor = isDark ? '#9CA3AF' : '#6B7280';
+
+            blocks.forEach(block => {
+                const canvas = document.getElementById(`chart-${block.id}`);
+                if (!canvas) return;
+
+                if (block.type === 'cashflow') {
+                    const mult = getMultiplier();
+                    chartInstances[block.id] = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov'],
+                            datasets: [
+                                {
+                                    label: 'Ingresos',
+                                    data: [3950, 4100, 3900, 4350, 4000, Math.round(metrics.income / (mult > 1 ? 10 : 1))],
+                                    backgroundColor: '#10B981',
+                                    borderRadius: 6,
+                                    barPercentage: 0.65
+                                },
+                                {
+                                    label: 'Gastos',
+                                    data: [2480, 2610, 2290, 2550, 2549, Math.round(metrics.expense / (mult > 1 ? 10 : 1))],
+                                    backgroundColor: '#F87171',
+                                    borderRadius: 6,
+                                    barPercentage: 0.65
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1F2937' : '#111827',
+                                    padding: 10,
+                                    cornerRadius: 8
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: tickColor, font: { family: 'Inter', size: 11 } }
+                                },
+                                y: {
+                                    grid: { color: gridColor },
+                                    border: { display: false },
+                                    ticks: {
+                                        color: tickColor,
+                                        font: { family: 'Inter', size: 11 },
+                                        callback: val => '$' + val.toLocaleString()
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (block.type === 'categories') {
+                    const entries = Object.entries(metrics.categoryTotals).sort((a, b) => b[1] - a[1]);
+                    if (!entries.length) return;
+                    chartInstances[block.id] = new Chart(canvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: entries.map(([k]) => k),
+                            datasets: [{
+                                data: entries.map(([, v]) => v),
+                                backgroundColor: entries.map(([k]) => (CATEGORIES_META[k]?.color || '#6B7280')),
+                                borderWidth: 0,
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '72%',
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1F2937' : '#111827',
+                                    padding: 10,
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: ctx => ` ${ctx.label}: ${formatCurrency(ctx.raw)}`
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // ==========================================
+        // 7. VISTAS SECUNDARIAS (CUENTAS Y REGLAS IA)
+        // ==========================================
+        function renderAccountsView(container) {
+            const balances = getAccountBalances();
+            const cardsHTML = state.accounts.map(acc => {
+                const bal = balances[acc.name] ?? acc.initialBalance;
+                const txCount = state.transactions.filter(t => (t.account || 'Cuenta Principal') === acc.name).length;
+                return `
+                    <div class="bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl p-5 flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">${acc.badge || 'Cuenta'}</span>
+                            <button onclick="setAccountFilter('${acc.name.replace(/'/g, "\\'")}'); setActiveNav('resumen');" class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Ver en tablero →</button>
+                        </div>
+                        <div class="mt-4">
+                            <h3 class="text-base font-semibold">${acc.name}</h3>
+                            <p class="text-2xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-500' : ''}">${formatCurrency(bal)}</p>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-3">${txCount} movimientos asociados · Base ${formatCurrency(acc.initialBalance)}</p>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="flex flex-col gap-4 block-enter">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold">Cuentas y Billeteras</h3>
+                            <p class="text-xs text-gray-500">Saldos calculados en tiempo real según ingresos y gastos</p>
+                        </div>
+                        <button onclick="openNewAccountModal()" class="px-3.5 py-2 rounded-xl bg-gray-900 dark:bg-indigo-600 text-white text-xs font-semibold">+ Nueva Cuenta</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">${cardsHTML}</div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderRulesView(container) {
+            const rulesHTML = state.rules.map(r => `
+                <div class="flex items-center justify-between gap-3 p-4 bg-[#F9FAFB] dark:bg-[#161920] border border-[#E5E7EB] dark:border-[#262A34] rounded-xl">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium">${r.condition}</p>
+                            <p class="text-xs text-gray-500">Categoría destino: <span class="font-semibold text-gray-800 dark:text-gray-200">${r.category}</span></p>
+                        </div>
+                    </div>
+                    <button onclick="toggleRuleActive('${r.id}')" class="text-xs font-semibold px-2.5 py-1 rounded-full ${r.active ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400' : 'bg-gray-200 dark:bg-gray-800 text-gray-500'}">
+                        ${r.active ? 'Activa' : 'Pausada'}
+                    </button>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="flex flex-col gap-4 block-enter">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold">Reglas de Categorización IA</h3>
+                            <p class="text-xs text-gray-500">Se aplican al importar CSV y al crear reglas desde el Copiloto IA</p>
+                        </div>
+                        <button onclick="toggleAIDrawer(); askAI('Crea regla si comercio contiene Netflix -> Entretenimiento')" class="px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold">+ Crear Regla con IA</button>
+                    </div>
+                    <div class="flex flex-col gap-3">${rulesHTML}</div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function toggleRuleActive(ruleId) {
+            const rule = state.rules.find(r => r.id === ruleId);
+            if (rule) {
+                rule.active = !rule.active;
+                saveState();
+                renderBlocksGrid();
+                showToast(`Regla ${rule.active ? 'activada' : 'pausada'}`);
+            }
+        }
+
+        // ==========================================
+        // 8. ACCIONES MODULARES, CUENTAS Y TRANSACCIONES
+        // ==========================================
+        function addBlock(type) {
+            const page = state.pages.find(p => p.id === state.activePageId);
+            if (!page) return;
+            const span = (type === 'cashflow' || type === 'transactions') ? 12 : 6;
+            page.blocks.push({
+                id: 'b-' + Date.now(),
+                type,
+                span
+            });
+            saveState();
+            closeAddBlockModal();
+            renderPagesList();
+            renderBlocksGrid();
+            showToast('Bloque añadido y guardado');
+        }
+
+        function removeBlock(blockId) {
+            const page = state.pages.find(p => p.id === state.activePageId);
+            if (!page) return;
+            page.blocks = page.blocks.filter(b => b.id !== blockId);
+            saveState();
+            renderPagesList();
+            renderBlocksGrid();
+            showToast('Bloque eliminado');
+        }
+
+        function toggleBlockWidth(blockId) {
+            const page = state.pages.find(p => p.id === state.activePageId);
+            if (!page) return;
+            const block = page.blocks.find(b => b.id === blockId);
+            if (block) {
+                block.span = block.span === 12 ? 6 : 12;
+                saveState();
+                renderBlocksGrid();
+            }
+        }
+
+        function moveBlock(blockId, direction) {
+            const page = state.pages.find(p => p.id === state.activePageId);
+            if (!page) return;
+            const idx = page.blocks.findIndex(b => b.id === blockId);
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= page.blocks.length) return;
+            const temp = page.blocks[idx];
+            page.blocks[idx] = page.blocks[targetIdx];
+            page.blocks[targetIdx] = temp;
+            saveState();
+            renderBlocksGrid();
+        }
+
+        function updateTransactionCategory(txId, newCategory) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (tx) {
+                tx.category = newCategory;
+                saveState();
+                renderBlocksGrid();
+                showToast(`Categoría actualizada a "${newCategory}"`);
+            }
+        }
+
+        function handleAddTransaction(e) {
+            e.preventDefault();
+            const type = document.querySelector('input[name="txType"]:checked').value;
+            const merchant = document.getElementById('tx-merchant').value.trim();
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const category = document.getElementById('tx-category').value;
+            const account = document.getElementById('tx-account').value || 'Cuenta Principal';
+            const date = document.getElementById('tx-date').value || '2026-11-20';
+
+            if (!merchant || isNaN(amount) || amount <= 0) return;
+
+            state.transactions.unshift({
+                id: 't-' + Date.now(),
+                date,
+                merchant,
+                category: type === 'income' ? 'Ingresos' : category,
+                amount,
+                type,
+                account
+            });
+
+            saveState();
+            e.target.reset();
+            document.getElementById('tx-date').value = '2026-11-20';
+            closeNewTransactionModal();
+            renderSidebarAccounts();
+            renderBlocksGrid();
+            showToast('Movimiento guardado');
+        }
+
+        function handleAddAccount(e) {
+            e.preventDefault();
+            const name = document.getElementById('acc-name').value.trim();
+            const initialBalance = parseFloat(document.getElementById('acc-balance').value) || 0;
+            if (!name) return;
+
+            if (!state.accounts.some(a => a.name.toLowerCase() === name.toLowerCase())) {
+                state.accounts.push({
+                    id: 'acc-' + Date.now(),
+                    name,
+                    initialBalance,
+                    badge: 'Personalizada'
+                });
+                saveState();
+                renderSidebarAccounts();
+                renderBlocksGrid();
+                showToast(`Cuenta "${name}" creada`);
+            } else {
+                showToast('Ya existe una cuenta con ese nombre');
+            }
+            e.target.reset();
+            closeNewAccountModal();
+        }
+
+        function handleSearchTx(val) {
+            state.searchQuery = val;
+            renderBlocksGrid();
+        }
+
+        function handleFilterCategory(val) {
+            state.categoryFilter = val;
+            renderBlocksGrid();
+        }
+
+        function changeDateRange(val) {
+            state.dateRange = val;
+            saveState();
+            renderBlocksGrid();
+            const labels = { this_month: 'Este mes', last_30: 'Últimos 30 días', this_year: 'Este año' };
+            showToast(`Rango: ${labels[val]}`);
+        }
+
+        // ==========================================
+        // 9. IMPORTADOR INTERACTIVO DE CSV Y RESPALDO
+        // ==========================================
+        function openImportCSVModal() {
+            populateAccountSelects();
+            const modal = document.getElementById('import-csv-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeImportCSVModal() {
+            const modal = document.getElementById('import-csv-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function detectDelimiter(text) {
+            const firstLine = text.split(/\r?\n/).find(line => line.trim().length > 0) || '';
+            const commas = (firstLine.match(/,/g) || []).length;
+            const semis = (firstLine.match(/;/g) || []).length;
+            return semis > commas ? ';' : ',';
+        }
+
+        function parseCSVLine(line, delimiter) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    inQuotes = !inQuotes;
+                } else if (ch === delimiter && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function parseCSVText(rawText) {
+            const selDelim = document.getElementById('csv-delimiter').value;
+            const delimiter = selDelim === 'auto' ? detectDelimiter(rawText) : selDelim;
+            const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length < 2) {
+                csvParsedData = { headers: [], rows: [] };
+                return;
+            }
+            const headers = parseCSVLine(lines[0], delimiter).map((h, i) => h || `Columna ${i + 1}`);
+            const rows = lines.slice(1).map(line => parseCSVLine(line, delimiter));
+            csvParsedData = { headers, rows };
+        }
+
+        function handleCSVFileChange(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                parseCSVText(e.target.result || '');
+                populateCSVColumnSelects();
+                renderCSVPreview();
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function loadSampleCSV() {
+            const sample = [
+                'Fecha,Comercio,Monto,Cuenta',
+                '2026-11-20,Supermercado Central,-84.20,Billetera Digital',
+                '2026-11-19,Uber Centro,-14.50,Tarjeta Crédito',
+                '2026-11-18,Pago Cliente Diseño,650.00,Cuenta Principal',
+                '2026-11-17,Restaurante El Mirador,-42.00,Efectivo',
+                '2026-11-16,Fibra Hogar,-55.00,Cuenta Principal'
+            ].join('\n');
+            parseCSVText(sample);
+            populateCSVColumnSelects();
+            renderCSVPreview();
+            showToast('CSV de ejemplo cargado');
+        }
+
+        function populateCSVColumnSelects() {
+            const { headers } = csvParsedData;
+            if (!headers.length) return;
+
+            const panel = document.getElementById('csv-mapping-panel');
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
+
+            const makeOpts = (includeNone = false) => {
+                const base = includeNone ? `<option value="">-- Ninguna --</option>` : '';
+                return base + headers.map((h, idx) => `<option value="${idx}">${h}</option>`).join('');
+            };
+
+            const dateSel = document.getElementById('csv-col-date');
+            const merchSel = document.getElementById('csv-col-merchant');
+            const amtSel = document.getElementById('csv-col-amount');
+            const accSel = document.getElementById('csv-col-account');
+
+            dateSel.innerHTML = makeOpts(false);
+            merchSel.innerHTML = makeOpts(false);
+            amtSel.innerHTML = makeOpts(false);
+            accSel.innerHTML = makeOpts(true);
+
+            // Auto-mapeo inteligente por nombre de columna
+            headers.forEach((h, idx) => {
+                const lh = h.toLowerCase();
+                if (lh.includes('fecha') || lh.includes('date')) dateSel.value = String(idx);
+                if (lh.includes('comercio') || lh.includes('desc') || lh.includes('merchant') || lh.includes('concepto')) merchSel.value = String(idx);
+                if (lh.includes('monto') || lh.includes('amount') || lh.includes('valor') || lh.includes('importe')) amtSel.value = String(idx);
+                if (lh.includes('cuenta') || lh.includes('account') || lh.includes('billetera')) accSel.value = String(idx);
+            });
+            if (headers.length >= 3 && merchSel.value === amtSel.value) {
+                dateSel.value = '0';
+                merchSel.value = '1';
+                amtSel.value = '2';
+            }
+        }
+
+        function buildMappedRows() {
+            const { rows } = csvParsedData;
+            const dIdx = parseInt(document.getElementById('csv-col-date').value, 10);
+            const mIdx = parseInt(document.getElementById('csv-col-merchant').value, 10);
+            const aIdx = parseInt(document.getElementById('csv-col-amount').value, 10);
+            const cIdxRaw = document.getElementById('csv-col-account').value;
+            const cIdx = cIdxRaw === '' ? -1 : parseInt(cIdxRaw, 10);
+            const defaultAcc = document.getElementById('csv-default-account').value || 'Cuenta Principal';
+
+            const mapped = [];
+            rows.forEach((cols, i) => {
+                const rawMerchant = (cols[mIdx] || '').replace(/^"|"$/g, '').trim();
+                const rawAmountStr = (cols[aIdx] || '').replace(/[^0-9.,-]/g, '').replace(',', '.');
+                const num = parseFloat(rawAmountStr);
+                if (!rawMerchant || isNaN(num) || num === 0) return;
+
+                const type = num < 0 ? 'expense' : 'income';
+                const amount = Math.abs(num);
+                const date = (cols[dIdx] || '2026-11-20').trim() || '2026-11-20';
+                const account = (cIdx >= 0 && cols[cIdx]) ? cols[cIdx].trim() : defaultAcc;
+                const category = applyRulesToMerchant(rawMerchant, type);
+
+                mapped.push({
+                    id: `csv-${Date.now()}-${i}`,
+                    date,
+                    merchant: rawMerchant,
+                    category,
+                    amount,
+                    type,
+                    account
+                });
+            });
+            return mapped;
+        }
+
+        function renderCSVPreview() {
+            const mapped = buildMappedRows();
+            document.getElementById('csv-row-count').textContent = `${mapped.length} filas válidas detectadas`;
+            document.getElementById('csv-import-btn').disabled = mapped.length === 0;
+
+            const tbody = document.getElementById('csv-preview-body');
+            tbody.innerHTML = mapped.slice(0, 6).map(item => `
+                <tr>
+                    <td class="py-2 px-3 tabular-nums text-gray-500">${item.date}</td>
+                    <td class="py-2 px-3 font-medium">${item.merchant}</td>
+                    <td class="py-2 px-3 text-gray-500">${item.account}</td>
+                    <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-medium ${(CATEGORIES_META[item.category] || CATEGORIES_META['Servicios']).bg}">${item.category}</span></td>
+                    <td class="py-2 px-3 text-right font-semibold tabular-nums ${item.type === 'income' ? 'text-emerald-600' : ''}">${item.type === 'income' ? '+' : '-'}${formatCurrency(item.amount)}</td>
+                </tr>
+            `).join('') || `<tr><td colspan="5" class="py-4 text-center text-gray-400">Ajusta el mapeo de columnas para ver filas válidas.</td></tr>`;
+        }
+
+        function confirmImportCSV() {
+            const mapped = buildMappedRows();
+            if (!mapped.length) return;
+
+            // Registrar cuentas nuevas si el CSV incluía nombres de cuenta no existentes
+            mapped.forEach(item => {
+                if (!state.accounts.some(a => a.name.toLowerCase() === item.account.toLowerCase())) {
+                    state.accounts.push({
+                        id: 'acc-' + Date.now() + Math.random().toString(16).slice(2, 6),
+                        name: item.account,
+                        initialBalance: 0,
+                        badge: 'CSV'
+                    });
+                }
+            });
+
+            state.transactions = [...mapped, ...state.transactions];
+            saveState();
+            closeImportCSVModal();
+            renderSidebarAccounts();
+            renderBlocksGrid();
+            showToast(`${mapped.length} movimientos importados con Reglas IA`);
+        }
+
+        function exportBackupJSON() {
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fina-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Respaldo JSON descargado');
+        }
+
+        function exportTransactionsCSV() {
+            const header = 'Fecha,Comercio,Categoria,Cuenta,Tipo,Monto';
+            const lines = state.transactions.map(t => {
+                const signed = t.type === 'expense' ? -t.amount : t.amount;
+                return `${t.date},"${t.merchant.replace(/"/g, '""')}",${t.category},"${(t.account || 'Cuenta Principal').replace(/"/g, '""')}",${t.type},${signed.toFixed(2)}`;
+            });
+            const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fina-transacciones-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Transacciones exportadas a CSV');
+        }
+
+        // ==========================================
+        // 10. ASISTENTE IA FINANCIERO INTERACTIVO
+        // ==========================================
+        function toggleAIDrawer() {
+            const drawer = document.getElementById('ai-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function handleAISubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('ai-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            askAI(text);
+        }
+
+        function extractRuleFromPrompt(promptText) {
+            // Soporta patrones como: "crea regla si comercio contiene uber -> transporte" o "uber -> transporte"
+            const arrowMatch = promptText.match(/(?:contiene\s+)?["']?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+?)["']?\s*(?:->|=>|a|como)\s*([a-zA-ZáéíóúÁÉÍÓÚñÑ]+)/i);
+            if (!arrowMatch) return null;
+
+            const rawKw = arrowMatch[1].replace(/^(crea\s+regla\s+si\s+comercio\s+|regla\s+)/i, '').trim();
+            const rawCat = arrowMatch[2].trim().toLowerCase();
+
+            const matchedCat = Object.keys(CATEGORIES_META).find(c => c.toLowerCase() === rawCat);
+            if (!rawKw || !matchedCat) return null;
+
+            return { keyword: rawKw, category: matchedCat };
+        }
+
+        function askAI(promptText) {
+            const chat = document.getElementById('ai-chat-messages');
+            chat.innerHTML += `
+                <div class="self-end bg-gray-900 dark:bg-indigo-600 text-white rounded-2xl rounded-br-xs px-3.5 py-2.5 max-w-[85%] leading-relaxed">
+                    ${promptText}
+                </div>
+            `;
+
+            const metrics = getComputedMetrics();
+            const q = promptText.toLowerCase();
+            let reply = '';
+
+            const parsedRule = (q.includes('regla') || promptText.includes('->')) ? extractRuleFromPrompt(promptText) : null;
+
+            if (parsedRule) {
+                state.rules.push({
+                    id: 'r-' + Date.now(),
+                    keyword: parsedRule.keyword,
+                    condition: `Comercio contiene "${parsedRule.keyword}"`,
+                    category: parsedRule.category,
+                    active: true
+                });
+                const reclassified = reclassifyExistingTransactionsByRule(parsedRule.keyword, parsedRule.category);
+                saveState();
+                renderBlocksGrid();
+                reply = `⚡ Regla creada: <em>Si el comercio contiene "${parsedRule.keyword}" → <strong>${parsedRule.category}</strong></em>. Se reclasificaron <strong>${reclassified}</strong> transacciones existentes y se guardó en tu historial.`;
+            } else if (q.includes('comida') || q.includes('restaurante') || q.includes('supermercado')) {
+                const foodTotal = metrics.categoryTotals['Comida'] || 0;
+                const pct = metrics.expense > 0 ? ((foodTotal / metrics.expense) * 100).toFixed(1) : '0.0';
+                reply = `🍔 Has gastado <strong>${formatCurrency(foodTotal)}</strong> en <strong>Comida</strong> (${pct}% de tus gastos totales de ${formatCurrency(metrics.expense)}).`;
+            } else if (q.includes('ahorro') || q.includes('analizar')) {
+                const netSaved = Math.max(0, metrics.income - metrics.expense);
+                reply = `📈 Tu tasa de ahorro actual es del <strong>${metrics.savingsRate.toFixed(1)}%</strong> (<strong>${formatCurrency(netSaved)}</strong> retenidos). Tu saldo neto consolidado es de <strong>${formatCurrency(metrics.netWorth)}</strong>.`;
+            } else {
+                reply = `📊 Saldo Neto: <strong>${formatCurrency(metrics.netWorth)}</strong> · Ingresos: <strong>${formatCurrency(metrics.income)}</strong> · Gastos: <strong>${formatCurrency(metrics.expense)}</strong>. Tip: escribe <em>"Crea regla si comercio contiene Netflix -> Entretenimiento"</em> para automatizar categorías.`;
+            }
+
+            setTimeout(() => {
+                chat.innerHTML += `
+                    <div class="bg-[#F9FAFB] dark:bg-[#1C2029] border border-[#E5E7EB] dark:border-[#262A34] rounded-2xl rounded-bl-xs p-3.5 text-gray-700 dark:text-gray-200 leading-relaxed block-enter">
+                        ${reply}
+                    </div>
+                `;
+                chat.scrollTop = chat.scrollHeight;
+            }, 220);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // ==========================================
+        // 11. NAVEGACIÓN, TEMA Y MODALES UI
+        // ==========================================
+        function setActiveNav(nav) {
+            state.activeNav = nav;
+            saveState();
+            updateNavUI();
+            renderPagesList();
+            renderBlocksGrid();
+            if (window.innerWidth < 1024) toggleSidebar(false);
+        }
+
+        function updateNavUI() {
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                const isMatch = btn.dataset.nav === state.activeNav;
+                btn.className = `nav-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isMatch
+                    ? 'bg-gray-200/70 dark:bg-gray-800 text-gray-900 dark:text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+                }`;
+            });
+        }
+
+        function applyThemeToDOM() {
+            document.documentElement.classList.toggle('dark', Boolean(state.darkMode));
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.setAttribute('data-lucide', state.darkMode ? 'sun' : 'moon');
+            }
+        }
+
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            saveState();
+            applyThemeToDOM();
+            lucide.createIcons();
+            renderBlocksGrid();
+        }
+
+        function toggleSidebar(force) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            const shouldOpen = typeof force === 'boolean' ? force : !isOpen;
+
+            if (shouldOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function toggleWorkspaceMenu() {
+            document.getElementById('workspace-dropdown').classList.toggle('hidden');
+        }
+
+        function switchWorkspace(name) {
+            state.workspaceName = name;
+            saveState();
+            document.getElementById('current-workspace-name').textContent = name;
+            document.getElementById('workspace-dropdown').classList.add('hidden');
+            showToast(`Espacio: ${name}`);
+        }
+
+        function populateAccountSelects() {
+            const opts = state.accounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+            document.getElementById('tx-account').innerHTML = opts;
+            document.getElementById('csv-default-account').innerHTML = opts;
+        }
+
+        function openAddBlockModal() {
+            const modal = document.getElementById('add-block-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeAddBlockModal() {
+            const modal = document.getElementById('add-block-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function openNewTransactionModal() {
+            populateAccountSelects();
+            const modal = document.getElementById('new-tx-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeNewTransactionModal() {
+            const modal = document.getElementById('new-tx-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function openNewAccountModal() {
+            const modal = document.getElementById('new-account-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeNewAccountModal() {
+            const modal = document.getElementById('new-account-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-lg block-enter';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 2800);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                toggleAIDrawer();
+            }
+        });
+
+        function renderAll() {
+            updateNavUI();
+            renderPagesList();
+            renderSidebarAccounts();
+            renderBlocksGrid();
+            lucide.createIcons();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            applyThemeToDOM();
+            syncHeaderWithActivePage();
+            renderAll();
+        });
+    </script>
+</body>
+</html>

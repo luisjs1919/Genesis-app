@@ -1,0 +1,7 @@
+INSTRUCCIONES DE USO — FACTURA PERSONALIZADA (CLIENTES AFILIADOS)
+
+1. Extrae 'factura-clientes-afiliados.html' en la carpeta donde tienes tu proyecto o factura.
+2. Abre 'factura-clientes-afiliados.html' en tu navegador para probarlo.
+3. Haz clic en el campo "Buscar cliente afiliado" o escribe un número (cédula, RIF, código o teléfono) o una letra (del nombre o razón social).
+4. Selecciona al cliente con clic o usando las flechas arriba/abajo y Enter para autocompletar los campos.
+5. Edita el arreglo 'clientesAfiliados' dentro del archivo para cargar tus afiliados reales.

@@ -1,0 +1,10 @@
+{
+  "serverUrl": "http://192.168.1.50:3000",
+  "salesPath": "/?modo=ventas",
+  "terminalName": "CAJA-RED",
+  "windowTitle": "Génesis POS — Terminal de Ventas en Red",
+  "kioskMode": false,
+  "maximizeOnStart": true,
+  "connectionTimeoutMs": 5000,
+  "retryIntervalMs": 3000
+}

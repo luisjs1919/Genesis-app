@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Génesis · Sistema Financiero v12 (Ventas, Crédito y Operadores)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">G</div>
+        <div>
+          <div class="brand-name">Génesis</div>
+          <div class="brand-sub">Sistema Financiero v12</div>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">ESPACIOS</div>
+        <button type="button" class="nav-item" data-view="resumen">Resumen General</button>
+        <button type="button" class="nav-item" data-view="operativo">Control Operativo</button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">PANEL DE OPCIONES</div>
+        <button type="button" class="nav-item" data-view="ventas">Ventas</button>
+        <button type="button" class="nav-item" data-view="productos">Productos</button>
+        <button type="button" class="nav-item" data-view="proveedores">Proveedores</button>
+        <button type="button" class="nav-item" data-view="clientes">Clientes afiliados</button>
+        <button type="button" class="nav-item" data-view="cierre">Cierre de caja</button>
+        <button type="button" class="nav-item active" data-view="operadores">Cuentas de operadores</button>
+        <button type="button" class="nav-item" data-view="monedas">Monedas</button>
+        <button type="button" class="nav-item" data-view="tasa">Tasa de cambio</button>
+        <button type="button" class="nav-item" data-view="pago">Tipo de pago</button>
+        <button type="button" class="nav-item" data-view="factura">Factura</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">PANEL DE OPCIONES · V12</div>
+          <h1 id="viewTitle">Cuentas de operadores</h1>
+        </div>
+        <div class="topbar-actions">
+          <input
+            type="search"
+            id="searchInput"
+            class="search-input"
+            placeholder="Buscar en cuentas de operadores..."
+          />
+          <button type="button" class="btn btn-primary" id="switchOperatorBtn">
+            Cambiar / Entrar como operador
+          </button>
+        </div>
+      </header>
+
+      <!-- VISTA 1: CUENTAS DE OPERADORES (Sin "Cuenta asignada" al crear o editar) -->
+      <div id="view-operadores" class="view-section active">
+        <p class="roles-info">
+          Roles disponibles: <strong>Administrador</strong>, <strong>Gerente</strong> y cantidad ilimitada de
+          <strong>Operadores</strong> creados por el Administrador.
+        </p>
+
+        <section class="card discount-card">
+          <div class="discount-meta">
+            <h2>Clave de Administrador para Descuentos y Ventas a Crédito / Fiado</h2>
+            <p>
+              Clave actual: <strong id="currentAdminKeyLabel">admin1</strong> · Requerida obligatoriamente para aplicar
+              descuentos en factura o autorizar ventas a crédito / fiado.
+            </p>
+          </div>
+          <div class="discount-controls">
+            <input
+              type="password"
+              id="newAdminKeyInput"
+              class="input-control"
+              placeholder="Nueva clave admin..."
+            />
+            <button type="button" class="btn btn-primary" id="saveAdminKeyBtn">
+              Guardar clave
+            </button>
+          </div>
+        </section>
+
+        <section class="card operator-form-card">
+          <h2 class="card-heading" id="operatorFormHeading">Crear nuevo operador</h2>
+          <form id="operatorForm">
+            <input type="hidden" id="editingOperatorId" value="" />
+
+            <!-- Fila de 3 campos: Nombre del operador, Rol y PIN acceso (opcional) -->
+            <div class="form-row-3">
+              <div class="field">
+                <label for="operatorName">Nombre del operador</label>
+                <input
+                  type="text"
+                  id="operatorName"
+                  name="operatorName"
+                  class="input-control"
+                  placeholder="Ej. Carlos (Operador Ventas)..."
+                  required
+                />
+              </div>
+
+              <div class="field">
+                <label for="operatorRole">Rol</label>
+                <select id="operatorRole" name="operatorRole" class="input-control">
+                  <option value="Operador" selected>Operador</option>
+                  <option value="Gerente">Gerente</option>
+                  <option value="Administrador">Administrador</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="operatorPin">PIN acceso (opcional)</label>
+                <input
+                  type="text"
+                  id="operatorPin"
+                  name="operatorPin"
+                  class="input-control"
+                  placeholder="Ej. 1234"
+                  maxlength="8"
+                />
+              </div>
+            </div>
+
+            <div class="permissions-section">
+              <div class="permissions-header">
+                <span class="permissions-title">PERMISOS OTORGADOS AL ENTRAR:</span>
+                <div class="preset-buttons">
+                  <button type="button" class="btn btn-ghost" id="presetOnlySales">Solo Ventas</button>
+                  <button type="button" class="btn btn-ghost" id="presetAll">Todos</button>
+                  <button type="button" class="btn btn-ghost" id="presetNone">Ninguno</button>
+                </div>
+              </div>
+
+              <div class="permissions-grid" id="permissionsGrid">
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Tablero / Espacios" />
+                  <span>Tablero / Espacios</span>
+                </label>
+
+                <label class="permission-tile checked">
+                  <input type="checkbox" name="permissions" value="Ventas" checked />
+                  <span>Ventas</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Productos" />
+                  <span>Productos</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Proveedores" />
+                  <span>Proveedores</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Clientes afiliados" />
+                  <span>Clientes afiliados</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Cierre de caja" />
+                  <span>Cierre de caja</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Cuentas de operadores" />
+                  <span>Cuentas de operadores</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Monedas" />
+                  <span>Monedas</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Tasa de cambio" />
+                  <span>Tasa de cambio</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Tipo de pago" />
+                  <span>Tipo de pago</span>
+                </label>
+
+                <label class="permission-tile">
+                  <input type="checkbox" name="permissions" value="Factura" />
+                  <span>Factura</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost hidden" id="cancelEditOperatorBtn">
+                Cancelar edición
+              </button>
+              <button type="submit" class="btn btn-primary" id="submitOperatorBtn">
+                Guardar operador
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card operators-list-card">
+          <h2>Operadores registrados</h2>
+          <div id="operatorsList" class="operators-list"></div>
+        </section>
+      </div>
+
+      <!-- VISTA 2: VENTAS, CRÉDITO / FIADO Y CUENTAS POR COBRAR -->
+      <div id="view-ventas" class="view-section">
+        <div class="two-col-grid">
+          <section class="card">
+            <h2 class="card-heading">Nueva Venta (Contado o Crédito / Fiado)</h2>
+            <form id="saleForm" class="stack-form">
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="saleProduct">Producto (Stock disponible)</label>
+                  <select id="saleProduct" class="input-control"></select>
+                </div>
+                <div class="field">
+                  <label for="saleQty">Cantidad</label>
+                  <input type="number" id="saleQty" class="input-control" min="1" value="1" required />
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="saleCustomer">Cliente afiliado</label>
+                  <select id="saleCustomer" class="input-control"></select>
+                </div>
+                <div class="field">
+                  <label for="saleCondition">Condición de venta</label>
+                  <select id="saleCondition" class="input-control">
+                    <option value="contado" selected>Contado</option>
+                    <option value="credito">Crédito / Fiado (Requiere clave admin)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="saleDiscount">Descuento (%)</label>
+                  <input type="number" id="saleDiscount" class="input-control" min="0" max="100" value="0" />
+                </div>
+                <div class="field" id="adminAuthField">
+                  <label for="saleAdminKey">Clave de Administrador (Obligatoria para crédito o descuento)</label>
+                  <input
+                    type="password"
+                    id="saleAdminKey"
+                    class="input-control"
+                    placeholder="Ingresa clave admin (ej. admin1)"
+                  />
+                </div>
+              </div>
+
+              <div id="saleFeedback" class="feedback-msg"></div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Registrar venta</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <h2 class="card-heading">Cuentas por Cobrar (Crédito / Fiado)</h2>
+            <div id="receivablesList" class="operators-list"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <h2 class="card-heading">Historial de Ventas e Inventario Actual</h2>
+          <div id="salesHistoryList" class="operators-list"></div>
+        </section>
+      </div>
+
+      <!-- VISTA 3: OTRAS SECCIONES DE CONTROL -->
+      <div id="view-generic" class="view-section">
+        <section class="card">
+          <h2 class="card-heading" id="genericTitle">Módulo del sistema</h2>
+          <p class="roles-info" id="genericDescription"></p>
+          <div id="genericContent" class="operators-list"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

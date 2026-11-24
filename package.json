@@ -1,0 +1,98 @@
+{
+  "name": "genesis-app",
+  "version": "30.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "desktop:prepare": "npm run build && node scripts/prepare-standalone.js",
+    "desktop:start": "npm run desktop:prepare && electron .",
+    "desktop:pack": "npm run desktop:prepare && electron-builder --dir",
+    "desktop:installer": "npm run desktop:prepare && electron-builder",
+    "dist:win": "npm run desktop:prepare && electron-builder --win nsis",
+    "dist:mac": "npm run desktop:prepare && electron-builder --mac dmg",
+    "dist:linux": "npm run desktop:prepare && electron-builder --linux AppImage deb"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
+    "lucide-react": "^0.469.0",
+    "next": "15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0"
+  },
+  "main": "electron/main.js",
+  "description": "Génesis — Sistema Administrativo, Contable y Punto de Venta Local",
+  "author": "Génesis Comercial",
+  "build": {
+    "appId": "com.genesis.admin.pos",
+    "productName": "Genesis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop-runtime",
+        "to": "desktop-runtime"
+      },
+      {
+        "from": "electron/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.ico",
+      "artifactName": "Genesis-Instalador-${version}-Windows.exe",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "shortcutName": "Genesis",
+      "include": "electron/installer.nsh"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "electron/icon.png",
+      "category": "public.app-category.business",
+      "artifactName": "Genesis-Instalador-${version}-Mac.dmg"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "electron/icon.png",
+      "category": "Office",
+      "artifactName": "Genesis-Instalador-${version}-Linux.${ext}"
+    },
+    "forceCodeSigning": false
+  }
+}

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factura Personalizada - Clientes Afiliados</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f6f9;
+      color: #1f2937;
+      margin: 0;
+      padding: 24px;
+    }
+    .contenedor {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 560px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .campo {
+      margin-bottom: 16px;
+      position: relative;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 0.92rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    input[readonly] {
+      background-color: #f8fafc;
+      color: #334155;
+    }
+    .resultados {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 30;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    .item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .item:last-child { border-bottom: none; }
+    .item:hover, .item.activo {
+      background-color: #eff6ff;
+    }
+    .badge {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      white-space: nowrap;
+      align-self: center;
+    }
+    .btn-limpiar {
+      margin-top: 6px;
+      background: #e2e8f0;
+      color: #1e293b;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .btn-limpiar:hover { background: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+  <div class="contenedor">
+    <h2>Factura Personalizada — Selección de Cliente Afiliado</h2>
+
+    <div class="campo">
+      <label for="buscarCliente">Buscar cliente afiliado (escribe número, cédula/RIF, código o letra del nombre):</label>
+      <input
+        type="text"
+        id="buscarCliente"
+        placeholder="Ej: 1458, AF-002, Mendoza, J-409..."
+        autocomplete="off"
+      >
+      <div id="listaResultados" class="resultados"></div>
+      <button type="button" class="btn-limpiar" id="btnLimpiar">Limpiar selección</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="campo">
+        <label for="codigoAfiliado">Código de afiliado</label>
+        <input type="text" id="codigoAfiliado" readonly>
+      </div>
+
+      <div class="campo">
+        <label for="rifCedula">Cédula / RIF</label>
+        <input type="text" id="rifCedula" readonly>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="campo">
+        <label for="nombreCliente">Nombre o razón social</label>
+        <input type="text" id="nombreCliente" readonly>
+      </div>
+
+      <div class="campo">
+        <label for="descuentoAfiliado">Descuento de afiliado (%)</label>
+        <input type="text" id="descuentoAfiliado" readonly>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="telefonoCliente">Teléfono / Contacto</label>
+      <input type="text" id="telefonoCliente" readonly>
+    </div>
+  </div>
+
+  <script>
+    // Reemplaza o amplía este listado con tus clientes afiliados reales
+    const clientesAfiliados = [
+      { codigo: "AF-001", rif: "V-14589632", nombre: "Carlos Mendoza", descuento: "10%", telefono: "0414-0001122" },
+      { codigo: "AF-002", rif: "V-19874561", nombre: "María Gabriela Pérez", descuento: "15%", telefono: "0412-0003344" },
+      { codigo: "AF-003", rif: "J-40987654-2", nombre: "Suministros El Roble C.A.", descuento: "12%", telefono: "0212-5550199" },
+      { codigo: "AF-004", rif: "V-22456789", nombre: "José Luis Ortega", descuento: "5%", telefono: "0424-0007788" }
+    ];
+
+    const inputBuscar = document.getElementById("buscarCliente");
+    const listaResultados = document.getElementById("listaResultados");
+    const btnLimpiar = document.getElementById("btnLimpiar");
+
+    let indiceSeleccionado = -1;
+    let resultadosActuales = [];
+
+    function normalizarTexto(str) {
+      return (str || "")
+        .toString()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase();
+    }
+
+    function renderizarLista(filtro = "") {
+      const consulta = normalizarTexto(filtro.trim());
+      listaResultados.innerHTML = "";
+      indiceSeleccionado = -1;
+
+      resultadosActuales = clientesAfiliados.filter((c) =>
+        normalizarTexto(c.codigo).includes(consulta) ||
+        normalizarTexto(c.rif).includes(consulta) ||
+        normalizarTexto(c.nombre).includes(consulta) ||
+        normalizarTexto(c.telefono).includes(consulta)
+      );
+
+      if (resultadosActuales.length === 0) {
+        listaResultados.innerHTML = '<div class="item">No se encontraron clientes afiliados</div>';
+        listaResultados.style.display = "block";
+        return;
+      }
+
+      resultadosActuales.forEach((cliente, idx) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.dataset.index = idx;
+
+        const textoPrincipal = document.createElement("span");
+        textoPrincipal.textContent = `${cliente.codigo} | ${cliente.rif} — ${cliente.nombre}`;
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = `Desc. ${cliente.descuento}`;
+
+        div.appendChild(textoPrincipal);
+        div.appendChild(badge);
+
+        div.addEventListener("click", () => seleccionarCliente(cliente));
+        listaResultados.appendChild(div);
+      });
+
+      listaResultados.style.display = "block";
+    }
+
+    function actualizarResaltadoTeclado() {
+      const items = listaResultados.querySelectorAll(".item[data-index]");
+      items.forEach((el, i) => {
+        el.classList.toggle("activo", i === indiceSeleccionado);
+        if (i === indiceSeleccionado) {
+          el.scrollIntoView({ block: "nearest" });
+        }
+      });
+    }
+
+    function seleccionarCliente(cliente) {
+      inputBuscar.value = `${cliente.rif} - ${cliente.nombre}`;
+      document.getElementById("codigoAfiliado").value = cliente.codigo;
+      document.getElementById("rifCedula").value = cliente.rif;
+      document.getElementById("nombreCliente").value = cliente.nombre;
+      document.getElementById("descuentoAfiliado").value = cliente.descuento;
+      document.getElementById("telefonoCliente").value = cliente.telefono;
+      listaResultados.style.display = "none";
+      indiceSeleccionado = -1;
+    }
+
+    function limpiarCampos() {
+      inputBuscar.value = "";
+      document.getElementById("codigoAfiliado").value = "";
+      document.getElementById("rifCedula").value = "";
+      document.getElementById("nombreCliente").value = "";
+      document.getElementById("descuentoAfiliado").value = "";
+      document.getElementById("telefonoCliente").value = "";
+      listaResultados.style.display = "none";
+      indiceSeleccionado = -1;
+      inputBuscar.focus();
+    }
+
+    inputBuscar.addEventListener("focus", () => renderizarLista(inputBuscar.value));
+    inputBuscar.addEventListener("input", () => renderizarLista(inputBuscar.value));
+
+    inputBuscar.addEventListener("keydown", (e) => {
+      if (listaResultados.style.display !== "block" || resultadosActuales.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        indiceSeleccionado = (indiceSeleccionado + 1) % resultadosActuales.length;
+        actualizarResaltadoTeclado();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        indiceSeleccionado = (indiceSeleccionado - 1 + resultadosActuales.length) % resultadosActuales.length;
+        actualizarResaltadoTeclado();
+      } else if (e.key === "Enter" && indiceSeleccionado >= 0) {
+        e.preventDefault();
+        seleccionarCliente(resultadosActuales[indiceSeleccionado]);
+      } else if (e.key === "Escape") {
+        listaResultados.style.display = "none";
+      }
+    });
+
+    btnLimpiar.addEventListener("click", limpiarCampos);
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".campo")) {
+        listaResultados.style.display = "none";
+      }
+    });
+  </script>
+
+</body>
+</html>
