@@ -32,7 +32,7 @@ const DEFAULT_OPERATOR_ACCOUNTS: OperatorAccountItem[] = [
   {
     id: 'op-admin',
     name: 'Administrador Principal',
-    role: 'ADMIN',
+    role: 'ADMIN' as OperatorRoleType as OperatorRoleType,
     pin: '1234',
     permissions: [
       'POS_SELL',
@@ -44,31 +44,31 @@ const DEFAULT_OPERATOR_ACCOUNTS: OperatorAccountItem[] = [
       'AUDIT_VIEW',
       'USERS_MANAGE',
       'SETTINGS_EDIT'
-    ],
+    ] as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-cajero',
     name: 'Cajero Mostrador 01',
-    role: 'CAJERO',
+    role: 'CAJERO' as OperatorRoleType as OperatorRoleType,
     pin: '2222',
-    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'],
+    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'] as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-almacen',
     name: 'Encargado Almacén',
-    role: 'ALMACEN',
+    role: 'ALMACEN' as OperatorRoleType as OperatorRoleType,
     pin: '3333',
-    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'],
+    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'] as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-auditor',
     name: 'Auditor / Supervisor',
-    role: 'AUDITOR',
+    role: 'AUDITOR' as OperatorRoleType as OperatorRoleType,
     pin: '4444',
-    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'],
+    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'] as OperatorPermissionKey[],
     active: true
   }
 ];
@@ -365,7 +365,7 @@ function normalizeRif(raw: string): string {
 }
 
 export default function GenesisDashboard() {
-  const [state, setState] = useState<GenesisState>(() => {
+  const [state, setState] = useState<GenesisState & { invoiceTemplate?: { businessName?: string; taxId?: string } }>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved =
@@ -472,7 +472,7 @@ export default function GenesisDashboard() {
         id: 'aud-init',
         timestamp: new Date().toISOString(),
         operatorName: 'Administrador Principal',
-        role: 'ADMIN',
+        role: 'ADMIN' as OperatorRoleType as OperatorRoleType,
         action: 'SYSTEM_INIT',
         detail: 'Inicialización del panel Genesis Business Dashboard'
       }
