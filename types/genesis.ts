@@ -188,6 +188,7 @@ export interface OperatorAccountItem {
   active: boolean;
   permissions: OperatorPermissionKey[];
   pin?: string;
+  commerceName?: string;
 }
 
 export interface CurrencyItem {
@@ -254,7 +255,6 @@ export interface GenesisState {
   receivables?: ReceivableAccountItem[];
   payables?: PayableAccountItem[];
 }
-
 
 export interface AuditEntry {
   id: string;
