@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../lib/supabaseBrowser';
 
-const TARGET_ROUTE = '/ventas';
+const TARGET_ROUTE = '/app';
 
 export default function GenesisLoginPage() {
   const router = useRouter();
