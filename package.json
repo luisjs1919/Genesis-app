@@ -18,5 +18,9 @@
   "build": {
     "artifactName": "Genesis-Instalador-${version}-Linux.${ext}",
     "forceCodeSigning": false
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "tailwindcss": "^4.3.5"
   }
 }
