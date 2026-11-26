@@ -1,5 +1,6 @@
 'use client';
 
+import { TplTaxIdField } from "@/lib/TplTaxIdField";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import PosSalesWindow from './PosSalesWindow';
 import GeneralReportsPanel from './GeneralReportsPanel';
@@ -3198,6 +3199,7 @@ export default function GenesisDashboard() {
         ? Array.from(new Set(newOpPermissions))
         : ['ventas'];
 
+    const currentCommerce = (state.invoiceTemplate?.businessName || '').trim() || undefined;
     const newOp: OperatorAccountItem = {
       id: `op-${Date.now()}`,
       operatorName: cleanName,
@@ -3206,6 +3208,7 @@ export default function GenesisDashboard() {
       active: true,
       permissions: permsToSave,
       pin: newOpPin.trim() || undefined,
+      commerceName: currentCommerce,
     };
 
     setState((prev) => ({
@@ -3313,10 +3316,23 @@ export default function GenesisDashboard() {
     }
 
     const perms = getEffectiveOperatorPermissions(targetOp);
+    const activeCommerceName = (targetOp.commerceName || state.invoiceTemplate?.businessName || '').trim() || undefined;
     setState((prev) => {
+      const nextOps = prev.operatorAccounts.map((op) =>
+        op.id === targetOp.id && !op.commerceName && activeCommerceName
+          ? { ...op, commerceName: activeCommerceName }
+          : op
+      );
       const next: GenesisState = {
         ...prev,
+        operatorAccounts: nextOps,
         currentOperatorId: targetOp.id,
+        invoiceTemplate: activeCommerceName
+          ? {
+              ...(prev.invoiceTemplate || DEFAULT_STATE.invoiceTemplate),
+              businessName: activeCommerceName,
+            }
+          : prev.invoiceTemplate,
       };
       if (normalizeOperatorRole(targetOp.role) !== 'Administrador') {
         if (!perms.includes('dashboard') && perms.includes(prev.operationsSection)) {
@@ -6808,30 +6824,39 @@ export default function GenesisDashboard() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[11px] text-gray-500 mb-1">Nombre del local</label>
+                          <label className="block text-[11px] text-gray-500 mb-1">
+                            Nombre del local {currentOperator?.commerceName ? '(Fijo en usuario)' : ''}
+                          </label>
                           <input
                             type="text"
-                            value={tpl.businessName}
-                            onChange={(e) => updateTpl({ businessName: e.target.value })}
+                            value={currentOperator?.commerceName || tpl.businessName}
+                            readOnly={Boolean(currentOperator?.commerceName)}
+                            disabled={Boolean(currentOperator?.commerceName)}
+                            onChange={(e) => {
+                              if (currentOperator?.commerceName) return;
+                              const nextName = e.target.value;
+                              updateTpl({ businessName: nextName });
+                              if (currentOperator?.id && nextName.trim()) {
+                                setState((prev) => ({
+                                  ...prev,
+                                  operatorAccounts: prev.operatorAccounts.map((op) =>
+                                    op.id === currentOperator.id && !op.commerceName
+                                      ? { ...op, commerceName: nextName.trim() }
+                                      : op
+                                  ),
+                                }));
+                              }
+                            }}
                             placeholder="Ej. Inversiones Génesis C.A."
                             className={`w-full px-3 py-2 rounded-lg border outline-none ${
+                              currentOperator?.commerceName ? 'opacity-75 cursor-not-allowed' : ''
+                            } ${
                               isDark ? 'bg-gray-950 border-gray-700' : 'bg-[#F8FAFF] border-gray-300'
                             }`}
                           />
                         </div>
 
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-1">RIF / Identificación fiscal</label>
-                          <input
-                            type="text"
-                            value={tpl.taxId}
-                            onChange={(e) => updateTpl({ taxId: e.target.value })}
-                            placeholder="Ej. J-40123456-7"
-                            className={`w-full px-3 py-2 rounded-lg border tabular-nums outline-none ${
-                              isDark ? 'bg-gray-950 border-gray-700' : 'bg-[#F8FAFF] border-gray-300'
-                            }`}
-                          />
-                        </div>
+          <TplTaxIdField tpl={tpl} updateTpl={updateTpl} isDark={isDark} />
                       </div>
 
                       <div>
