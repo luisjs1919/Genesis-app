@@ -28,7 +28,7 @@ const AUDIT_STORAGE_KEY = 'genesis_audit_log_v1';
 const OPERATOR_SESSIONS_KEY = 'genesis_operator_sessions_v1';
 const STARTUP_LOCK_ENABLED_KEY = 'genesis_startup_lock_enabled_v1';
 
-const DEFAULT_OPERATOR_ACCOUNTS: OperatorAccountItem[] = [
+const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
   {
     id: 'op-admin',
     name: 'Administrador Principal',
@@ -312,7 +312,7 @@ const INITIAL_BLOCKS: DashboardBlock[] = [
   }
 ];
 
-function createDefaultState(): GenesisState {
+function createDefaultState(): any {
   return {
     businessName: 'Genesis-app',
     businessRif: 'J-4546474849',
@@ -365,7 +365,7 @@ function normalizeRif(raw: string): string {
 }
 
 export default function GenesisDashboard() {
-  const [state, setState] = useState<GenesisState & { invoiceTemplate?: { businessName?: string; taxId?: string } }>(() => {
+  const [state, setState] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved =
@@ -421,7 +421,7 @@ export default function GenesisDashboard() {
   const [txAmountUsd, setTxAmountUsd] = useState<string>('');
   const [txPaymentMethod, setTxPaymentMethod] = useState<PaymentAccountCategory>('PAGO_MOVIL');
 
-  const [operators] = useState<OperatorAccountItem[]>(() => {
+  const [operators] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const raw = localStorage.getItem(OPERATOR_SESSIONS_KEY);
@@ -434,7 +434,7 @@ export default function GenesisDashboard() {
     return DEFAULT_OPERATOR_ACCOUNTS;
   });
 
-  const [currentOperator, setCurrentOperator] = useState<OperatorAccountItem>(() => {
+  const [currentOperator, setCurrentOperator] = useState<any>(() => {
     return operators[0] || DEFAULT_OPERATOR_ACCOUNTS[0];
   });
 
@@ -460,7 +460,7 @@ export default function GenesisDashboard() {
   const [isMasterRestoreModalOpen, setIsMasterRestoreModalOpen] = useState<boolean>(false);
   const [masterRestoreInput, setMasterRestoreInput] = useState<string>('');
 
-  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>(() => {
+  const [auditLogs, setAuditLogs] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const raw = localStorage.getItem(AUDIT_STORAGE_KEY);
@@ -479,7 +479,7 @@ export default function GenesisDashboard() {
     ];
   });
 
-  const [posCart, setPosCart] = useState<SaleInvoiceItem[]>([]);
+  const [posCart, setPosCart] = useState<any[]>([]);
   const posSearchInputRef = useRef<HTMLInputElement | null>(null);
   const startupPinInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -874,7 +874,7 @@ export default function GenesisDashboard() {
                 </span>
               </div>
               <p className="text-xs opacity-70">
-                Operador: <span className="font-medium">{currentOperator.name}</span> ({OPERATOR_ROLE_LABELS[currentOperator.role]}) · Tasa activa: {activeRate.toFixed(2)} Bs
+                Operador: <span className="font-medium">{currentOperator.name || currentOperator.label || 'Operador'}</span> ({OPERATOR_ROLE_LABELS[currentOperator.role]}) · Tasa activa: {activeRate.toFixed(2)} Bs
               </p>
             </div>
           </div>
@@ -1824,7 +1824,7 @@ export default function GenesisDashboard() {
                 >
                   {operators.map((op) => (
                     <option key={op.id} value={op.id}>
-                      {op.name} ({OPERATOR_ROLE_LABELS[op.role]})
+                      {op.name || op.label || 'Operador'} ({OPERATOR_ROLE_LABELS[op.role]})
                     </option>
                   ))}
                 </select>
@@ -1893,7 +1893,7 @@ export default function GenesisDashboard() {
               >
                 {operators.map((op) => (
                   <option key={op.id} value={op.id}>
-                    {op.name} ({OPERATOR_ROLE_LABELS[op.role]})
+                    {op.name || op.label || 'Operador'} ({OPERATOR_ROLE_LABELS[op.role]})
                   </option>
                 ))}
               </select>
@@ -2011,8 +2011,8 @@ export default function GenesisDashboard() {
       )}
 
       <GenesisCloudSyncLayer
-        state={state}
-        setState={setState}
+        state={state as any}
+        setState={setState as any}
         localStorageKey={STORAGE_KEY}
       />
     </div>
