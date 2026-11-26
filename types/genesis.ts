@@ -19,6 +19,22 @@ export type PaymentMethod =
   | 'ZELLE'
   | string;
 
+export interface ProductItem {
+  id: string;
+  sku?: string;
+  barcode?: string;
+  name: string;
+  category?: string;
+  brand?: string;
+  supplierName?: string;
+  costUsd?: number;
+  priceUsd: number;
+  taxRate?: number;
+  stock: number;
+  minStock?: number;
+  [key: string]: any;
+}
+
 export interface AuditEntry {
   id: string;
   timestamp: string;
@@ -67,6 +83,67 @@ export interface Transaction {
   amountUsd: number;
   paymentMethod?: PaymentMethod;
   status?: string;
+  [key: string]: any;
+}
+
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  rif?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  [key: string]: any;
+}
+
+export interface SupplierRecord {
+  id: string;
+  rif?: string;
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  category?: string;
+  creditDays?: number;
+  balanceUsd?: number;
+  [key: string]: any;
+}
+
+export interface ReceivableItem {
+  id: string;
+  customerName: string;
+  customerRif?: string;
+  invoiceNumber?: string;
+  date: string;
+  dueDate?: string;
+  totalUsd: number;
+  paidUsd: number;
+  status?: string;
+  [key: string]: any;
+}
+
+export interface PayableItem {
+  id: string;
+  supplierName: string;
+  supplierRif?: string;
+  invoiceNumber?: string;
+  date: string;
+  dueDate?: string;
+  totalUsd: number;
+  paidUsd: number;
+  status?: string;
+  [key: string]: any;
+}
+
+export interface CreditNoteRecord {
+  id: string;
+  creditNoteNumber?: string;
+  invoiceNumber?: string;
+  date: string;
+  customerName?: string;
+  customerRif?: string;
+  reason?: string;
+  totalUsd: number;
   [key: string]: any;
 }
 
