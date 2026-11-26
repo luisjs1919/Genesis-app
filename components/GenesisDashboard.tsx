@@ -2,7 +2,7 @@
 
 import GenesisCloudSyncLayer from './GenesisCloudSyncLayer';
 import { TplTaxIdField } from "@/lib/TplTaxIdField";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import PosSalesWindow from './PosSalesWindow';
 import GeneralReportsPanel from './GeneralReportsPanel';
 import AccountingBookPanel from './AccountingBookPanel';
@@ -358,7 +358,7 @@ function normalizeRif(raw: string): string {
 }
 
 export default function GenesisDashboard() {
-  const [state, setState] = useState<any>(() => {
+  const [state, setState] = React.useState<any>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved =
@@ -396,25 +396,25 @@ export default function GenesisDashboard() {
     };
   });
 
-  const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [activeSubSection, setActiveSubSection] = useState<any>('OVERVIEW');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
+  const [darkMode, setDarkMode] = React.useState<boolean>(false);
+  const [activeSubSection, setActiveSubSection] = React.useState<any>('OVERVIEW');
+  const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = React.useState<string>('ALL');
 
-  const [isAddBlockOpen, setIsAddBlockOpen] = useState<boolean>(false);
-  const [newBlockTitle, setNewBlockTitle] = useState<string>('');
-  const [newBlockType, setNewBlockType] = useState<any>('kpi_summary');
-  const [newBlockColSpan, setNewBlockColSpan] = useState<1 | 2>(1);
+  const [isAddBlockOpen, setIsAddBlockOpen] = React.useState<boolean>(false);
+  const [newBlockTitle, setNewBlockTitle] = React.useState<string>('');
+  const [newBlockType, setNewBlockType] = React.useState<any>('kpi_summary');
+  const [newBlockColSpan, setNewBlockColSpan] = React.useState<1 | 2>(1);
 
-  const [isAddTxOpen, setIsAddTxOpen] = useState<boolean>(false);
-  const [txDate, setTxDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [txDescription, setTxDescription] = useState<string>('');
-  const [txCategory, setTxCategory] = useState<string>('Ventas Mostrador');
-  const [txType, setTxType] = useState<'income' | 'expense'>('income');
-  const [txAmountUsd, setTxAmountUsd] = useState<string>('');
-  const [txPaymentMethod, setTxPaymentMethod] = useState<any>('PAGO_MOVIL');
+  const [isAddTxOpen, setIsAddTxOpen] = React.useState<boolean>(false);
+  const [txDate, setTxDate] = React.useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [txDescription, setTxDescription] = React.useState<string>('');
+  const [txCategory, setTxCategory] = React.useState<string>('Ventas Mostrador');
+  const [txType, setTxType] = React.useState<'income' | 'expense'>('income');
+  const [txAmountUsd, setTxAmountUsd] = React.useState<string>('');
+  const [txPaymentMethod, setTxPaymentMethod] = React.useState<any>('PAGO_MOVIL');
 
-  const [operators] = useState<any[]>(() => {
+  const [operators] = React.useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const raw = localStorage.getItem(OPERATOR_SESSIONS_KEY);
@@ -427,33 +427,33 @@ export default function GenesisDashboard() {
     return DEFAULT_OPERATOR_ACCOUNTS;
   });
 
-  const [currentOperator, setCurrentOperator] = useState<any>(() => {
+  const [currentOperator, setCurrentOperator] = React.useState<any>(() => {
     return operators[0] || DEFAULT_OPERATOR_ACCOUNTS[0];
   });
 
-  const [startupLockEnabled, setStartupLockEnabled] = useState<boolean>(() => {
+  const [startupLockEnabled, setStartupLockEnabled] = React.useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(STARTUP_LOCK_ENABLED_KEY) === 'true';
     }
     return false;
   });
 
-  const [isStartupLoginOpen, setIsStartupLoginOpen] = useState<boolean>(false);
-  const [isSwitchOperatorOpen, setIsSwitchOperatorOpen] = useState<boolean>(false);
-  const [selectedOperatorId, setSelectedOperatorId] = useState<string>(DEFAULT_OPERATOR_ACCOUNTS[0].id);
-  const [pinInput, setPinInput] = useState<string>('');
-  const [pinError, setPinError] = useState<string>('');
+  const [isStartupLoginOpen, setIsStartupLoginOpen] = React.useState<boolean>(false);
+  const [isSwitchOperatorOpen, setIsSwitchOperatorOpen] = React.useState<boolean>(false);
+  const [selectedOperatorId, setSelectedOperatorId] = React.useState<string>(DEFAULT_OPERATOR_ACCOUNTS[0].id);
+  const [pinInput, setPinInput] = React.useState<string>('');
+  const [pinError, setPinError] = React.useState<string>('');
 
-  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
-  const [copilotPrompt, setCopilotPrompt] = useState<string>('');
-  const [copilotReply, setCopilotReply] = useState<string>(
+  const [isCopilotOpen, setIsCopilotOpen] = React.useState<boolean>(false);
+  const [copilotPrompt, setCopilotPrompt] = React.useState<string>('');
+  const [copilotReply, setCopilotReply] = React.useState<string>(
     'Asistente Genesis listo. Puedo resumir ventas, márgenes, cuentas por cobrar/pagar, tasas BCV/Paralelo o sugerir ajustes de inventario.'
   );
 
-  const [isMasterRestoreModalOpen, setIsMasterRestoreModalOpen] = useState<boolean>(false);
-  const [masterRestoreInput, setMasterRestoreInput] = useState<string>('');
+  const [isMasterRestoreModalOpen, setIsMasterRestoreModalOpen] = React.useState<boolean>(false);
+  const [masterRestoreInput, setMasterRestoreInput] = React.useState<string>('');
 
-  const [auditLogs, setAuditLogs] = useState<any[]>(() => {
+  const [auditLogs, setAuditLogs] = React.useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const raw = localStorage.getItem(AUDIT_STORAGE_KEY);
@@ -472,7 +472,7 @@ export default function GenesisDashboard() {
     ];
   });
 
-  const [posCart, setPosCart] = useState<any[]>([]);
+  const [posCart, setPosCart] = React.useState<any[]>([]);
   const posSearchInputRef = useRef<HTMLInputElement | null>(null);
   const startupPinInputRef = useRef<HTMLInputElement | null>(null);
 
