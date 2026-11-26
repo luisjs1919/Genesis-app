@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { generateXlsxBytes, type ExcelSheetData } from '@/lib/excelWorkbook';
+import { generateXlsxBytes, type ExcelSheetData } from '../../../lib/excelWorkbook';
 
 export const runtime = 'nodejs';
 
 const WORKBOOK_REL_PATH = path.join('data', 'genesis_libro_general.xlsx');
 
 function getWorkbookFullPath(): string {
-  const baseDir = process.env.GENESIS_USER_DATA_DIR || process.cwd();
-  return path.join(baseDir, WORKBOOK_REL_PATH);
+  if (process.env.GENESIS_USER_DATA_DIR) {
+    return path.join(process.env.GENESIS_USER_DATA_DIR, WORKBOOK_REL_PATH);
+  }
+  if (process.env.VERCEL) {
+    return path.join('/tmp', 'genesis_libro_general.xlsx');
+  }
+  return path.join(process.cwd(), WORKBOOK_REL_PATH);
 }
 
 export async function POST(req: NextRequest) {
@@ -18,9 +23,19 @@ export async function POST(req: NextRequest) {
     const sheets: ExcelSheetData[] = Array.isArray(body?.sheets) ? body.sheets : [];
     const bytes = generateXlsxBytes(sheets);
 
-    const fullPath = getWorkbookFullPath();
-    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    fs.writeFileSync(fullPath, Buffer.from(bytes));
+    let fullPath = getWorkbookFullPath();
+    try {
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, Buffer.from(bytes));
+    } catch (writeErr) {
+      if (process.env.VERCEL) {
+        fullPath = path.join('/tmp', 'genesis_libro_general.xlsx');
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, Buffer.from(bytes));
+      } else {
+        throw writeErr;
+      }
+    }
 
     return NextResponse.json({
       ok: true,
