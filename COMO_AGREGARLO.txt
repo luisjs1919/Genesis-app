@@ -1,0 +1,20 @@
+COMO AGREGARLO EN TU REPOSITORIO GIT (SIN TOCAR MEDIO DASHBOARD)
+
+1. Copia estos dos archivos a tu carpeta `components/` (junto a `RifOnboardingModal.tsx`):
+   - `components/useGenesisCloudSync.ts`
+   - `components/GenesisCloudSyncLayer.tsx`
+
+2. Abre el archivo donde se renderiza tu dashboard principal (`GenesisDashboard.tsx` / `.jsx` o la página en `/app`).
+
+3. Importa `GenesisCloudSyncLayer`:
+   import GenesisCloudSyncLayer from './components/GenesisCloudSyncLayer';
+   (ajusta la ruta `../` o `./` según dónde esté tu archivo del dashboard).
+
+4. Dentro del `return (...)` de tu dashboard, agrega esta línea pasando tu `state` y `setState`:
+   <GenesisCloudSyncLayer state={state} setState={setState} />
+
+5. Haz commit y push a GitHub para que Vercel actualice el despliegue.
+
+NOTA IMPORTANTE:
+- Asegúrate de que `lib/cloudSync.ts` y `components/RifOnboardingModal.tsx` ya estén en las carpetas `lib/` y `components/` de tu repo.
+- Si al iniciar sesión en otro dispositivo te lleva a otro negocio o datos distintos, revisa con qué email/cuenta iniciaste sesión en Supabase Auth y verifica en la tabla `public.businesses` / `public.business_members` a qué `business_id` pertenece ese `user_id`.
