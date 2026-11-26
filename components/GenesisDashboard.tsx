@@ -1298,7 +1298,7 @@ export default function GenesisDashboard() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  });
+  }, [isStartupLoginOpen, activeViewMode, state.operationsSection, state.products, addProductToInvoice]);
 
   const filteredTransactions = useMemo(() => {
     const targetDay = boardDate || getLocalTodayStr();
@@ -1630,7 +1630,7 @@ export default function GenesisDashboard() {
       date: getLocalTodayStr(),
       merchant: `Compra Factura OCR — ${supName}`,
       amount: -Number(totalCost.toFixed(2)),
-      categoryId: 'cat-expense',
+      categoryId: 'cat-services',
       accountId: state.accounts[0]?.id || 'acc-1',
     };
     const auditRec = createAuditEntry(
@@ -1818,7 +1818,7 @@ export default function GenesisDashboard() {
       date: getLocalTodayStr(),
       merchant: `${isEarly ? 'Pago anticipado' : 'Abono CxP'} — ${target.supplierName} (${target.reference})`,
       amount: -payVal,
-      categoryId: 'cat-expense',
+      categoryId: 'cat-services',
       accountId: state.accounts[0]?.id || 'acc-1',
     };
     const auditRec = createAuditEntry(
@@ -2547,7 +2547,7 @@ export default function GenesisDashboard() {
       date: cleanDate,
       merchant: `Gasto: ${cleanReason}${cleanInvoice ? ` · Fact. ${cleanInvoice}` : ''}${cleanBeneficiary ? ` (${cleanBeneficiary})` : ''}`,
       amount: -cleanAmount,
-      categoryId: 'cat-expense',
+      categoryId: 'cat-services',
       accountId: targetAccountId,
     };
 
@@ -2928,6 +2928,15 @@ export default function GenesisDashboard() {
       creditNotes: [],
       receivables: [],
       payables: [],
+      invoiceTemplate: {
+        ...DEFAULT_STATE.invoiceTemplate,
+        businessName: '',
+        rif: '',
+        address: '',
+        phone: '',
+        email: '',
+        footerNote: '',
+      },
       currentOperatorId: 'op-1',
     };
     try {
@@ -3157,7 +3166,7 @@ export default function GenesisDashboard() {
         }
       }
     }
-  });
+  }, [loaded, activeViewMode, state.operationsSection, currentOperatorId, state.operators]);
 
   const handleCreateOperator = (e: React.FormEvent) => {
     e.preventDefault();
