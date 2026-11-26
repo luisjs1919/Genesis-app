@@ -1478,20 +1478,26 @@ export default function GenesisDashboard() {
               </div>
 
               <TplTaxIdField
-                label="RIF Fiscal"
-                value={state.businessRif}
-                onChange={(val: string) => {
-                  const cleanRif = normalizeRif(val);
-                  setState((prev: any) => ({
-                    ...prev,
-                    businessRif: cleanRif,
-                    invoiceTemplate: {
-                      ...(prev.invoiceTemplate || {}),
-                      taxId: cleanRif
-                    }
-                  }));
+                tpl={state.invoiceTemplate || { taxId: state.businessRif }}
+                updateTpl={(patch: Record<string, any>) => {
+                  setState((prev: any) => {
+                    const nextTaxId =
+                      typeof patch?.taxId === "string"
+                        ? normalizeRif(patch.taxId)
+                        : normalizeRif(prev?.invoiceTemplate?.taxId || prev?.businessRif || "");
+                    return {
+                      ...prev,
+                      businessRif: nextTaxId,
+                      invoiceTemplate: {
+                        ...(prev.invoiceTemplate || {}),
+                        ...patch,
+                        taxId: nextTaxId
+                      }
+                    };
+                  });
                 }}
-                darkMode={darkMode}
+                isDark={darkMode}
+                activeRif={state.businessRif}
               />
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
