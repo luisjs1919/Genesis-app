@@ -404,13 +404,13 @@ export default function GenesisDashboard() {
   });
 
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [activeSubSection, setActiveSubSection] = useState<OperationsSubSection>('OVERVIEW');
+  const [activeSubSection, setActiveSubSection] = useState<any>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
 
   const [isAddBlockOpen, setIsAddBlockOpen] = useState<boolean>(false);
   const [newBlockTitle, setNewBlockTitle] = useState<string>('');
-  const [newBlockType, setNewBlockType] = useState<BlockType>('kpi_summary');
+  const [newBlockType, setNewBlockType] = useState<any>('kpi_summary');
   const [newBlockColSpan, setNewBlockColSpan] = useState<1 | 2>(1);
 
   const [isAddTxOpen, setIsAddTxOpen] = useState<boolean>(false);
@@ -419,7 +419,7 @@ export default function GenesisDashboard() {
   const [txCategory, setTxCategory] = useState<string>('Ventas Mostrador');
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
   const [txAmountUsd, setTxAmountUsd] = useState<string>('');
-  const [txPaymentMethod, setTxPaymentMethod] = useState<PaymentAccountCategory>('PAGO_MOVIL');
+  const [txPaymentMethod, setTxPaymentMethod] = useState<any>('PAGO_MOVIL');
 
   const [operators] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
@@ -987,7 +987,7 @@ export default function GenesisDashboard() {
               ['ACCOUNTING', 'Contabilidad', Scale],
               ['SENIAT', 'SENIAT', FileText],
               ['SETTINGS', 'Ajustes', ClipboardCheck]
-            ] as [OperationsSubSection, string, React.ComponentType<{ className?: string }>][]
+            ] as [any, string, React.ComponentType<{ className?: string }>][]
           ).map(([key, label, Icon]) => {
             const active = activeSubSection === key;
             return (
@@ -1610,7 +1610,7 @@ export default function GenesisDashboard() {
                   <label className="mb-1 block font-medium">Tipo</label>
                   <select
                     value={txType}
-                    onChange={(e) => setTxType(e.target.value as 'income' | 'expense')}
+                    onChange={(e) => setTxType(e.target.value as any)}
                     className={`w-full rounded-lg border px-3 py-2 ${
                       darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'
                     }`}
@@ -1666,7 +1666,7 @@ export default function GenesisDashboard() {
                   <label className="mb-1 block font-medium">Método de Pago</label>
                   <select
                     value={txPaymentMethod}
-                    onChange={(e) => setTxPaymentMethod(e.target.value as PaymentAccountCategory)}
+                    onChange={(e) => setTxPaymentMethod(e.target.value as any)}
                     className={`w-full rounded-lg border px-3 py-2 ${
                       darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'
                     }`}
@@ -1731,7 +1731,7 @@ export default function GenesisDashboard() {
                 <label className="mb-1 block font-medium">Tipo de Bloque</label>
                 <select
                   value={newBlockType}
-                  onChange={(e) => setNewBlockType(e.target.value as BlockType)}
+                  onChange={(e) => setNewBlockType(e.target.value as any)}
                   className={`w-full rounded-lg border px-3 py-2 ${
                     darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'
                   }`}
