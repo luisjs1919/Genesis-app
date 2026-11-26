@@ -5,10 +5,64 @@ import { getSupabaseBrowserClient } from './supabaseBrowser';
 export interface CloudBusinessRecord {
   id: string;
   name: string;
+  business_name?: string | null;
   tax_id: string | null;
   app_state: Record<string, unknown> | null;
   bcv_usd_rate?: number | null;
   bcv_eur_rate?: number | null;
+}
+
+export function normalizeRif(rif: string): string {
+  return rif.trim().toUpperCase().replace(/\s+/g, '');
+}
+
+export async function getOrCreateBusinessByRif(
+  rawRif: string,
+  fallbackName = 'Genesis-app'
+): Promise<CloudBusinessRecord> {
+  const cleanRif = normalizeRif(rawRif);
+  if (!cleanRif) {
+    throw new Error('Debes indicar un RIF válido.');
+  }
+
+  const supabase = getSupabaseBrowserClient();
+
+  const { data: existing, error: findError } = await supabase
+    .from('businesses')
+    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .eq('tax_id', cleanRif)
+    .limit(1)
+    .maybeSingle();
+
+  if (findError) {
+    throw findError;
+  }
+
+  if (existing) {
+    return {
+      ...existing,
+      name: existing.business_name || fallbackName,
+    } as CloudBusinessRecord;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from('businesses')
+    .insert({
+      business_name: fallbackName,
+      tax_id: cleanRif,
+      app_state: null,
+    })
+    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .single();
+
+  if (createError || !created) {
+    throw createError || new Error('No se pudo crear el negocio por RIF en Supabase.');
+  }
+
+  return {
+    ...created,
+    name: created.business_name || fallbackName,
+  } as CloudBusinessRecord;
 }
 
 export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Promise<{
@@ -61,14 +115,17 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
   if (businessId) {
     const { data: biz, error: bizError } = await supabase
       .from('businesses')
-      .select('id, name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+      .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
       .eq('id', businessId)
       .single();
 
     if (!bizError && biz) {
       return {
         userId,
-        business: biz as CloudBusinessRecord,
+        business: {
+          ...biz,
+          name: biz.business_name || fallbackName,
+        } as CloudBusinessRecord,
         isNew: false,
       };
     }
@@ -77,12 +134,12 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
   const { data: createdBiz, error: createError } = await supabase
     .from('businesses')
     .insert({
-      name: fallbackName,
+      business_name: fallbackName,
       owner_user_id: userId,
       tax_id: null,
       app_state: null,
     })
-    .select('id, name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
     .single();
 
   if (createError || !createdBiz) {
@@ -100,7 +157,10 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
 
   return {
     userId,
-    business: createdBiz as CloudBusinessRecord,
+    business: {
+      ...createdBiz,
+      name: createdBiz.business_name || fallbackName,
+    } as CloudBusinessRecord,
     isNew: true,
   };
 }
@@ -119,10 +179,10 @@ export async function saveBusinessCloudState(params: {
   };
 
   if (typeof params.name === 'string' && params.name.trim()) {
-    payload.name = params.name.trim();
+    payload.business_name = params.name.trim();
   }
   if (params.taxId !== undefined) {
-    payload.tax_id = params.taxId ? params.taxId.trim().toUpperCase() : null;
+    payload.tax_id = params.taxId ? normalizeRif(params.taxId) : null;
   }
   if (params.appState !== undefined) {
     payload.app_state = params.appState;
