@@ -32,7 +32,7 @@ const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
   {
     id: 'op-admin',
     name: 'Administrador Principal',
-    role: 'ADMIN' as OperatorRoleType as OperatorRoleType,
+    role: 'ADMIN' as unknown as OperatorRoleType,
     pin: '1234',
     permissions: [
       'POS_SELL',
@@ -44,31 +44,31 @@ const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
       'AUDIT_VIEW',
       'USERS_MANAGE',
       'SETTINGS_EDIT'
-    ] as OperatorPermissionKey[],
+    ] as unknown as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-cajero',
     name: 'Cajero Mostrador 01',
-    role: 'CAJERO' as OperatorRoleType as OperatorRoleType,
+    role: 'CAJERO' as unknown as OperatorRoleType,
     pin: '2222',
-    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'] as OperatorPermissionKey[],
+    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'] as unknown as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-almacen',
     name: 'Encargado Almacén',
-    role: 'ALMACEN' as OperatorRoleType as OperatorRoleType,
+    role: 'ALMACEN' as unknown as OperatorRoleType,
     pin: '3333',
-    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'] as OperatorPermissionKey[],
+    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'] as unknown as OperatorPermissionKey[],
     active: true
   },
   {
     id: 'op-auditor',
     name: 'Auditor / Supervisor',
-    role: 'AUDITOR' as OperatorRoleType as OperatorRoleType,
+    role: 'AUDITOR' as unknown as OperatorRoleType,
     pin: '4444',
-    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'] as OperatorPermissionKey[],
+    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'] as unknown as OperatorPermissionKey[],
     active: true
   }
 ];
@@ -472,7 +472,7 @@ export default function GenesisDashboard() {
         id: 'aud-init',
         timestamp: new Date().toISOString(),
         operatorName: 'Administrador Principal',
-        role: 'ADMIN' as OperatorRoleType as OperatorRoleType,
+        role: 'ADMIN' as unknown as OperatorRoleType,
         action: 'SYSTEM_INIT',
         detail: 'Inicialización del panel Genesis Business Dashboard'
       }
@@ -503,7 +503,7 @@ export default function GenesisDashboard() {
     });
   };
 
-  const hasPermission = (perm: OperatorPermissionKey): boolean => {
+  const hasPermission = (perm: any): boolean => {
     if (!currentOperator) return true;
     if (currentOperator.role === 'ADMIN') return true;
     return currentOperator.permissions.includes(perm);
