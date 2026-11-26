@@ -73,7 +73,7 @@ const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
   }
 ];
 
-const OPERATOR_ROLE_LABELS: Record<OperatorRoleType, string> = {
+const OPERATOR_ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   CAJERO: 'Cajero',
   ALMACEN: 'Almacén',
@@ -874,7 +874,7 @@ export default function GenesisDashboard() {
                 </span>
               </div>
               <p className="text-xs opacity-70">
-                Operador: <span className="font-medium">{currentOperator.name || currentOperator.label || 'Operador'}</span> ({OPERATOR_ROLE_LABELS[currentOperator.role]}) · Tasa activa: {activeRate.toFixed(2)} Bs
+                Operador: <span className="font-medium">{currentOperator.name || currentOperator.label || 'Operador'}</span> ({(OPERATOR_ROLE_LABELS[String(currentOperator?.role || 'ADMIN')] || String(currentOperator?.role || 'Operador'))}) · Tasa activa: {activeRate.toFixed(2)} Bs
               </p>
             </div>
           </div>
@@ -1824,7 +1824,7 @@ export default function GenesisDashboard() {
                 >
                   {operators.map((op) => (
                     <option key={op.id} value={op.id}>
-                      {op.name || op.label || 'Operador'} ({OPERATOR_ROLE_LABELS[op.role]})
+                      {op.name || op.label || 'Operador'} ({(OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] || String(op?.role || 'Operador'))})
                     </option>
                   ))}
                 </select>
@@ -1893,7 +1893,7 @@ export default function GenesisDashboard() {
               >
                 {operators.map((op) => (
                   <option key={op.id} value={op.id}>
-                    {op.name || op.label || 'Operador'} ({OPERATOR_ROLE_LABELS[op.role]})
+                    {op.name || op.label || 'Operador'} ({(OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] || String(op?.role || 'Operador'))})
                   </option>
                 ))}
               </select>
