@@ -1,0 +1,86 @@
+// Ejemplo de integración dentro de GenesisDashboard.tsx
+// 1. Importa:
+//    import { useEffect, useRef } from 'react';
+//    import RifOnboardingModal from './RifOnboardingModal';
+//    import { CloudBusinessRecord, saveBusinessCloudState } from '../lib/cloudSync';
+
+// 2. Dentro de GenesisDashboard, agrega estas referencias:
+//    const cloudBusinessIdRef = useRef<string | null>(null);
+//    const isHydratingCloudRef = useRef<boolean>(false);
+
+// 3. Efecto para sincronizar cambios del estado hacia Supabase (con debounce de 700ms):
+//    useEffect(() => {
+//      if (isHydratingCloudRef.current) {
+//        isHydratingCloudRef.current = false;
+//        return;
+//      }
+//      const bizId = cloudBusinessIdRef.current;
+//      const currentRif = state?.invoiceTemplate?.taxId;
+//      if (!bizId || !currentRif || String(currentRif).trim() === '') return;
+//
+//      const timer = setTimeout(() => {
+//        saveBusinessCloudState({
+//          businessId: bizId,
+//          name: state?.invoiceTemplate?.businessName || 'Genesis-app',
+//          taxId: String(currentRif).trim().toUpperCase(),
+//          appState: state as unknown as Record<string, unknown>,
+//        }).catch((err) => {
+//          console.error('Error sincronizando app_state con Supabase:', err);
+//        });
+//      }, 700);
+//
+//      return () => clearTimeout(timer);
+//    }, [state]);
+
+// 4. Dentro del JSX del return principal de GenesisDashboard, monta el modal:
+/*
+<RifOnboardingModal
+  currentBusinessName={state?.invoiceTemplate?.businessName}
+  currentTaxId={state?.invoiceTemplate?.taxId}
+  currentAppState={state as unknown as Record<string, unknown>}
+  onCloudLoaded={(record: CloudBusinessRecord) => {
+    cloudBusinessIdRef.current = record.id;
+    if (record.app_state && typeof record.app_state === 'object') {
+      isHydratingCloudRef.current = true;
+      setState((prev: any) => ({
+        ...prev,
+        ...(record.app_state as Record<string, unknown>),
+        invoiceTemplate: {
+          ...prev?.invoiceTemplate,
+          ...((record.app_state as any)?.invoiceTemplate || {}),
+          businessName:
+            record.name ||
+            (record.app_state as any)?.invoiceTemplate?.businessName ||
+            prev?.invoiceTemplate?.businessName,
+          taxId:
+            record.tax_id ||
+            (record.app_state as any)?.invoiceTemplate?.taxId ||
+            prev?.invoiceTemplate?.taxId,
+        },
+      }));
+    } else if (record.tax_id || record.name) {
+      isHydratingCloudRef.current = true;
+      setState((prev: any) => ({
+        ...prev,
+        invoiceTemplate: {
+          ...prev?.invoiceTemplate,
+          businessName: record.name || prev?.invoiceTemplate?.businessName,
+          taxId: record.tax_id || prev?.invoiceTemplate?.taxId,
+        },
+      }));
+    }
+  }}
+  onSaved={({ businessId, businessName, taxId }) => {
+    cloudBusinessIdRef.current = businessId;
+    isHydratingCloudRef.current = true;
+    setState((prev: any) => ({
+      ...prev,
+      invoiceTemplate: {
+        ...prev?.invoiceTemplate,
+        businessName,
+        taxId,
+      },
+    }));
+  }}
+/>
+*/

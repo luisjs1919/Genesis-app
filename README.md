@@ -1,9 +1,17 @@
-# Sincronización por RIF + Nombre y RIF Inmutables (v3)
+# Genesis Cloud Sync (RIF + app_state en Supabase)
 
-Este paquete configura la base de datos y la capa de consulta para que:
-1. El establecimiento y sus facturas/ventas queden sincronizados directamente por el **RIF** normalizado.
-2. Una vez creados, ni el **nombre** (`name`) ni el **RIF** (`rif`) puedan modificarse (`trg_lock_business_name_and_rif` en PostgreSQL + validación en `rifSync.js`).
+Este paquete contiene los archivos necesarios para conectar tu app en Next.js con `public.businesses` en Supabase:
 
-## Archivos incluidos
-- `supabase_rif_sync.sql`: agrega `rif` e índices, crea el trigger `trg_sync_sale_business_rif` para ventas/facturas y crea el trigger `trg_lock_business_name_and_rif` para bloquear cambios posteriores de nombre y RIF.
-- `rifSync.js`: utilidades de búsqueda por RIF, creación sin duplicados, actualización segura de otros campos y registro sincronizado de facturas.
+1. `supabase/03_businesses_cloud_sync.sql`
+   - Ejecútalo en el **SQL Editor** de Supabase si aún no aplicaste las columnas `tax_id`, `app_state` o las políticas de `business_members`.
+
+2. `lib/cloudSync.ts`
+   - Cópialo en la carpeta `lib/` de tu proyecto Next.js.
+   - Asegúrate de que `../lib/supabaseBrowser` coincida con la ruta real de tu helper de Supabase en el navegador.
+
+3. `components/RifOnboardingModal.tsx`
+   - Cópialo en la carpeta `components/` de tu proyecto Next.js.
+   - Si el usuario no tiene `tax_id` registrado en su negocio, muestra el modal para capturarlo y guardarlo de por vida en Supabase.
+
+4. `INTEGRACION_DASHBOARD.txt`
+   - Contiene el patrón para cargar `app_state` y `tax_id` desde Supabase al entrar y sincronizar cambios automáticamente sin bucles infinitos.
