@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeRif } from '@/lib/rif';
 
 // Configura estas variables en tu archivo .env.local:
 // NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
@@ -14,10 +15,13 @@ const supabase =
 
 export default function GenesisAfiliacionPage() {
   const [businessName, setBusinessName] = useState('');
+  const [rif, setRif] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [plan, setPlan] = useState('Multidispositivo (PC + Tablet + Móvil)');
+  const [accessKey, setAccessKey] = useState('');
+  const [confirmAccessKey, setConfirmAccessKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
@@ -28,54 +32,88 @@ export default function GenesisAfiliacionPage() {
     e.preventDefault();
     setStatusMessage(null);
 
-    if (!businessName.trim() || !ownerName.trim() || !email.trim()) {
+    const normalizedRif = normalizeRif(rif);
+
+    if (!businessName.trim() || !normalizedRif || !ownerName.trim() || !email.trim()) {
       setStatusMessage({
         type: 'error',
-        text: 'Por favor completa el nombre del negocio, tu nombre y tu correo.',
+        text: 'Por favor completa el nombre del negocio, el RIF único, tu nombre y tu correo.',
+      });
+      return;
+    }
+
+    if (accessKey.length < 6) {
+      setStatusMessage({
+        type: 'error',
+        text: 'La clave de acceso debe tener al menos 6 caracteres.',
+      });
+      return;
+    }
+
+    if (accessKey !== confirmAccessKey) {
+      setStatusMessage({
+        type: 'error',
+        text: 'La clave de acceso y su confirmación no coinciden.',
       });
       return;
     }
 
     setLoading(true);
     try {
-      if (!supabase) {
+      const res = await fetch('/api/affiliate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: businessName.trim(),
+          rif: normalizedRif,
+          contactName: ownerName.trim(),
+          contactPhone: phone.trim(),
+          contactEmail: email.trim().toLowerCase(),
+          interestMode: plan,
+          accessKey,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
         setStatusMessage({
-          type: 'success',
-          text: `Solicitud lista para "${businessName}". Conecta NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para guardar en Supabase.`,
+          type: 'error',
+          text: data.error || 'No se pudo registrar la afiliación.',
         });
-        setLoading(false);
         return;
       }
 
-      const { error } = await supabase.from('affiliations').insert([
-        {
-          business_name: businessName.trim(),
-          owner_name: ownerName.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim(),
-          plan,
-          status: 'pendiente_activacion',
-        },
-      ]);
-
-      if (error) {
-        throw error;
+      if (supabase) {
+        await supabase.from('affiliations').insert([
+          {
+            business_name: businessName.trim(),
+            rif: normalizedRif,
+            owner_name: ownerName.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim(),
+            plan,
+            status: 'pendiente_activacion',
+          },
+        ]);
       }
 
       setStatusMessage({
         type: 'success',
-        text: '¡Afiliación registrada en Supabase! Tu cuenta quedó guardada para activar tu acceso multiplataforma.',
+        text: `${data.message || '¡Afiliación registrada correctamente!'} RIF vinculado: ${normalizedRif}`,
       });
       setBusinessName('');
+      setRif('');
       setOwnerName('');
       setEmail('');
       setPhone('');
+      setAccessKey('');
+      setConfirmAccessKey('');
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : 'No se pudo registrar la afiliación.';
       setStatusMessage({
         type: 'error',
-        text: `Error al guardar en Supabase: ${msg}`,
+        text: `Error al procesar la afiliación: ${msg}`,
       });
     } finally {
       setLoading(false);
@@ -235,23 +273,39 @@ export default function GenesisAfiliacionPage() {
             Afilia tu negocio a Génesis App
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            Completa tus datos para registrar tu comercio y preparar tu acceso
-            en la nube.
+            Completa tus datos para registrar tu comercio, vincular tu RIF único y
+            preparar tu acceso en la nube.
           </p>
 
           <form onSubmit={handleAffiliationSubmit} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-200">
-                Nombre del negocio o comercio *
-              </label>
-              <input
-                type="text"
-                required
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="Ej. Inversiones Génesis C.A."
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-slate-200">
+                  Nombre del negocio o comercio *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Ej. Inversiones Génesis C.A."
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-200">
+                  RIF único *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={rif}
+                  onChange={(e) => setRif(normalizeRif(e.target.value))}
+                  placeholder="Ej. J-5040363636"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -315,6 +369,36 @@ export default function GenesisAfiliacionPage() {
                   </option>
                   <option value="Demo Guiada">Demo Guiada</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-200">
+                  Clave de acceso *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={accessKey}
+                  onChange={(e) => setAccessKey(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-200">
+                  Confirmar clave *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmAccessKey}
+                  onChange={(e) => setConfirmAccessKey(e.target.value)}
+                  placeholder="Repite tu clave de acceso"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+                />
               </div>
             </div>
 
