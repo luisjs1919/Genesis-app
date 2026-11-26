@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { KeyRound, ShieldCheck, X } from "lucide-react";
-import { verificarClaveAdmin } from "@/lib/adminAuth";
+import { verificarClaveAdmin } from "../lib/adminAuth";
 
 interface AdminAuthModalProps {
   abierto: boolean;
