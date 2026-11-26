@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   CloudBusinessRecord,
   getOrCreateUserBusiness,
+  normalizeRif,
   saveBusinessCloudState,
 } from '../lib/cloudSync';
 
@@ -16,6 +17,7 @@ interface RifOnboardingModalProps {
     businessId: string;
     businessName: string;
     taxId: string;
+    record?: CloudBusinessRecord | null;
   }) => void;
 }
 
@@ -44,13 +46,32 @@ export default function RifOnboardingModal({
         if (!result || !active) return;
 
         const { business } = result;
-        setBusinessId(business.id);
-        setBusinessName(business.name || currentBusinessName || '');
-        setTaxId(business.tax_id || '');
-        onCloudLoaded(business);
+        const resolvedTaxId = normalizeRif(
+          business.tax_id ||
+            (business.app_state?.businessRif as string) ||
+            (business.app_state?.taxId as string) ||
+            currentTaxId ||
+            ''
+        );
+        const resolvedName =
+          business.name ||
+          (business.app_state?.businessName as string) ||
+          currentBusinessName ||
+          'Genesis-app';
 
-        if (!business.tax_id || business.tax_id.trim() === '') {
+        setBusinessId(business.id);
+        setBusinessName(resolvedName);
+        setTaxId(resolvedTaxId);
+        onCloudLoaded({
+          ...business,
+          name: resolvedName,
+          tax_id: resolvedTaxId || null,
+        });
+
+        if (!resolvedTaxId) {
           setOpen(true);
+        } else {
+          setOpen(false);
         }
       } catch (err: unknown) {
         if (!active) return;
@@ -71,7 +92,7 @@ export default function RifOnboardingModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const cleanRif = taxId.trim().toUpperCase();
+    const cleanRif = normalizeRif(taxId);
     const cleanName = (
       businessName.trim() ||
       currentBusinessName ||
@@ -93,6 +114,9 @@ export default function RifOnboardingModal({
     try {
       const mergedState = {
         ...(currentAppState || {}),
+        businessName: cleanName,
+        businessRif: cleanRif,
+        taxId: cleanRif,
         invoiceTemplate: {
           ...(((currentAppState as Record<string, unknown>)
             ?.invoiceTemplate as Record<string, unknown>) || {}),
@@ -101,7 +125,7 @@ export default function RifOnboardingModal({
         },
       };
 
-      await saveBusinessCloudState({
+      const savedRecord = await saveBusinessCloudState({
         businessId,
         name: cleanName,
         taxId: cleanRif,
@@ -112,6 +136,7 @@ export default function RifOnboardingModal({
         businessId,
         businessName: cleanName,
         taxId: cleanRif,
+        record: savedRecord,
       });
       setOpen(false);
     } catch (err: unknown) {
@@ -160,7 +185,7 @@ export default function RifOnboardingModal({
               required
               value={taxId}
               onChange={(e) => setTaxId(e.target.value)}
-              placeholder="Ej. J-5040363636"
+              placeholder="Ej. J-4546474849"
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm uppercase text-white focus:border-indigo-500 focus:outline-none"
             />
           </div>

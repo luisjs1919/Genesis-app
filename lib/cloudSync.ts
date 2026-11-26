@@ -14,7 +14,20 @@ export interface CloudBusinessRecord {
 }
 
 export function normalizeRif(rif: string): string {
-  return rif.trim().toUpperCase().replace(/\s+/g, '');
+  const clean = (rif || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (!clean) return '';
+  const compact = clean.replace(/-/g, '');
+  const prefixMatch = compact.match(/^([VJEGPC])(.*)$/);
+  if (prefixMatch) {
+    const prefix = prefixMatch[1];
+    const digits = prefixMatch[2].replace(/\D/g, '');
+    if (!digits) return prefix;
+    if (digits.length >= 9) {
+      return `${prefix}-${digits.slice(0, 8)}-${digits.slice(8, 9)}`;
+    }
+    return `${prefix}-${digits}`;
+  }
+  return clean;
 }
 
 function mapBusinessRow(row: Record<string, unknown>, fallbackName = 'Genesis-app'): CloudBusinessRecord {
@@ -26,14 +39,27 @@ function mapBusinessRow(row: Record<string, unknown>, fallbackName = 'Genesis-ap
   const rawAppState = row.app_state;
   const parsedAppState =
     rawAppState && typeof rawAppState === 'object' && !Array.isArray(rawAppState)
-      ? (rawAppState as Record<string, unknown>)
+      ? { ...(rawAppState as Record<string, unknown>) }
       : {};
+
+  const normalizedTaxId =
+    typeof row.tax_id === 'string' && row.tax_id.trim()
+      ? normalizeRif(row.tax_id)
+      : null;
+
+  if (normalizedTaxId) {
+    if (!parsedAppState.businessRif) parsedAppState.businessRif = normalizedTaxId;
+    if (!parsedAppState.taxId) parsedAppState.taxId = normalizedTaxId;
+  }
+  if (!parsedAppState.businessName) {
+    parsedAppState.businessName = resolvedName;
+  }
 
   return {
     id: String(row.id),
     name: resolvedName,
     business_name: resolvedName,
-    tax_id: typeof row.tax_id === 'string' ? row.tax_id : null,
+    tax_id: normalizedTaxId,
     app_state: parsedAppState,
     bcv_usd_rate: typeof row.bcv_usd_rate === 'number' ? row.bcv_usd_rate : null,
     bcv_eur_rate: typeof row.bcv_eur_rate === 'number' ? row.bcv_eur_rate : null,
@@ -43,7 +69,7 @@ function mapBusinessRow(row: Record<string, unknown>, fallbackName = 'Genesis-ap
 
 /**
  * Carga el negocio sincronizado en la nube para cualquier dispositivo (PC, tablet o móvil),
- * priorizando el negocio del usuario autenticado si existe o el negocio activo más reciente.
+ * priorizando el RIF indicado, el negocio del usuario autenticado o el registro compartido activo.
  */
 export async function loadActiveBusinessCloudState(
   preferredRif?: string | null,
@@ -135,6 +161,7 @@ export async function loadActiveBusinessCloudState(
       app_state: {
         businessName: accName,
         company_name: accName,
+        businessRif: accRif,
         rif: accRif,
         taxId: accRif,
       },
@@ -180,7 +207,11 @@ export async function getOrCreateBusinessByRif(
       name: fallbackName,
       business_name: fallbackName,
       tax_id: cleanRif,
-      app_state: {},
+      app_state: {
+        businessName: fallbackName,
+        businessRif: cleanRif,
+        taxId: cleanRif,
+      },
     })
     .select('*')
     .single();
@@ -242,6 +273,29 @@ export async function getOrCreateUserBusiness(fallbackName = 'Genesis-app'): Pro
         },
         { onConflict: 'business_id,user_id' }
       );
+    } else {
+      const { data: sharedFallback } = await supabase
+        .from('businesses')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (sharedFallback?.id) {
+        await supabase.from('business_members').upsert(
+          {
+            business_id: sharedFallback.id,
+            user_id: userId,
+            role: 'owner',
+          },
+          { onConflict: 'business_id,user_id' }
+        );
+        return {
+          userId,
+          business: mapBusinessRow(sharedFallback as Record<string, unknown>, fallbackName),
+          isNew: false,
+        };
+      }
     }
   }
 
@@ -300,24 +354,44 @@ export async function saveBusinessCloudState(params: {
   appState?: Record<string, unknown> | null;
   bcvUsdRate?: number | null;
   bcvEurRate?: number | null;
-}): Promise<void> {
+}): Promise<CloudBusinessRecord | null> {
   const supabase = getSupabaseBrowserClient();
   const nowIso = new Date().toISOString();
+
+  const normalizedRif =
+    params.taxId !== undefined && params.taxId ? normalizeRif(params.taxId) : undefined;
+  const cleanName =
+    typeof params.name === 'string' && params.name.trim() ? params.name.trim() : undefined;
+
+  const nextAppState: Record<string, unknown> = {
+    ...(params.appState && typeof params.appState === 'object' ? params.appState : {}),
+  };
+  if (cleanName) {
+    nextAppState.businessName = cleanName;
+  }
+  if (normalizedRif) {
+    nextAppState.businessRif = normalizedRif;
+    nextAppState.taxId = normalizedRif;
+    nextAppState.invoiceTemplate = {
+      ...((nextAppState.invoiceTemplate as Record<string, unknown>) || {}),
+      ...(cleanName ? { businessName: cleanName } : {}),
+      taxId: normalizedRif,
+    };
+  }
 
   const payload: Record<string, unknown> = {
     updated_at: nowIso,
   };
 
-  if (typeof params.name === 'string' && params.name.trim()) {
-    const cleanName = params.name.trim();
+  if (cleanName) {
     payload.name = cleanName;
     payload.business_name = cleanName;
   }
   if (params.taxId !== undefined) {
-    payload.tax_id = params.taxId ? normalizeRif(params.taxId) : null;
+    payload.tax_id = normalizedRif || null;
   }
   if (params.appState !== undefined) {
-    payload.app_state = params.appState ?? {};
+    payload.app_state = nextAppState;
   }
   if (typeof params.bcvUsdRate === 'number' && !Number.isNaN(params.bcvUsdRate)) {
     payload.bcv_usd_rate = params.bcvUsdRate;
@@ -326,35 +400,32 @@ export async function saveBusinessCloudState(params: {
     payload.bcv_eur_rate = params.bcvEurRate;
   }
 
-  const { error } = await supabase
+  const { data: updatedRow, error } = await supabase
     .from('businesses')
     .update(payload)
-    .eq('id', params.businessId);
+    .eq('id', params.businessId)
+    .select('*')
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  const effectiveRif =
-    typeof payload.tax_id === 'string' && payload.tax_id
-      ? payload.tax_id
-      : undefined;
-  const effectiveName =
-    typeof payload.name === 'string' && payload.name
-      ? payload.name
-      : undefined;
-
-  if (effectiveRif && effectiveName) {
+  if (normalizedRif && cleanName) {
     await supabase
       .from('commerce_accounts')
       .upsert(
         {
-          rif: effectiveRif,
-          company_name: effectiveName,
+          rif: normalizedRif,
+          company_name: cleanName,
           is_active: true,
           updated_at: nowIso,
         },
         { onConflict: 'rif' }
       );
   }
+
+  return updatedRow
+    ? mapBusinessRow(updatedRow as Record<string, unknown>, cleanName || 'Genesis-app')
+    : null;
 }

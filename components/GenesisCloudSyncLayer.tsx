@@ -19,7 +19,7 @@ interface GenesisCloudSyncLayerProps {
 export default function GenesisCloudSyncLayer({
   state,
   setState,
-  localStorageKey = 'genesis_app_v13_state',
+  localStorageKey = 'genesis_business_dashboard_v1',
 }: GenesisCloudSyncLayerProps) {
   const { handleCloudLoaded, handleRifSaved } = useGenesisCloudSync({
     state,
@@ -27,10 +27,15 @@ export default function GenesisCloudSyncLayer({
     localStorageKey,
   });
 
+  const resolvedTaxId =
+    state?.invoiceTemplate?.taxId || state?.businessRif || state?.taxId || '';
+  const resolvedBusinessName =
+    state?.businessName || state?.invoiceTemplate?.businessName || 'Genesis-app';
+
   return (
     <RifOnboardingModal
-      currentBusinessName={state?.invoiceTemplate?.businessName}
-      currentTaxId={state?.invoiceTemplate?.taxId}
+      currentBusinessName={resolvedBusinessName}
+      currentTaxId={resolvedTaxId}
       currentAppState={state as Record<string, unknown>}
       onCloudLoaded={handleCloudLoaded}
       onSaved={handleRifSaved}
