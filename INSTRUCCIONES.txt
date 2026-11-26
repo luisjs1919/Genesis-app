@@ -1,0 +1,20 @@
+PAQUETE DE SINCRONIZACION MULTI-DISPOSITIVO - GENESIS APP
+========================================================
+
+Que incluye este ZIP:
+1. src/lib/cloudCommerceSync.js
+   - Carga el comercio y su app_state desde Supabase (businesses / commerce_accounts).
+   - Si el navegador local tenia datos y la nube aun no los tenia, los sube automaticamente.
+   - Al guardar cambios del comercio o membrete, actualiza Supabase (businesses.app_state y commerce_accounts) y el cache local.
+
+2. src/lib/useSyncedDashboard.js
+   - Hook de React listo para hidratar el dashboard al abrir la app en cualquier dispositivo y guardar cambios sincronizados.
+
+3. supabase/08_ensure_anon_and_authenticated_sync_policies.sql
+   - Politicas RLS para permitir lectura/escritura entre dispositivos (PC, tablet, movil) sobre businesses y commerce_accounts.
+
+Como aplicarlo:
+1. Copia src/lib/cloudCommerceSync.js y src/lib/useSyncedDashboard.js a tu proyecto.
+2. En tu componente principal / pantalla de comercio o membrete, llama a loadSyncedBusinessState() al iniciar y saveSyncedBusinessState(datos) al guardar.
+3. Ejecuta supabase/08_ensure_anon_and_authenticated_sync_policies.sql en el SQL Editor de Supabase si aun no tienes sesion de usuario en Auth.
+4. Haz commit y push para que Vercel actualice el despliegue y prueba abrir en el segundo dispositivo.
