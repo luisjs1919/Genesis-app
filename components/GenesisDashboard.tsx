@@ -80,7 +80,7 @@ const OPERATOR_ROLE_LABELS: Record<string, string> = {
   AUDITOR: 'Auditor'
 };
 
-const INITIAL_PRODUCTS: ProductItem[] = [
+const INITIAL_PRODUCTS: any[] = [
   {
     id: 'prod-1',
     sku: 'SKU-001',
@@ -139,7 +139,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   }
 ];
 
-const INITIAL_SUPPLIERS: SupplierItem[] = [
+const INITIAL_SUPPLIERS: any[] = [
   {
     id: 'sup-1',
     rif: 'J-30123456-7',
@@ -175,7 +175,7 @@ const INITIAL_SUPPLIERS: SupplierItem[] = [
   }
 ];
 
-const INITIAL_RECEIVABLES: ReceivableAccountItem[] = [
+const INITIAL_RECEIVABLES: any[] = [
   {
     id: 'cxc-1',
     customerName: 'Bodega El Samán',
@@ -200,7 +200,7 @@ const INITIAL_RECEIVABLES: ReceivableAccountItem[] = [
   }
 ];
 
-const INITIAL_PAYABLES: PayableAccountItem[] = [
+const INITIAL_PAYABLES: any[] = [
   {
     id: 'cxp-1',
     supplierName: 'Distribuidora Central C.A.',
@@ -225,7 +225,7 @@ const INITIAL_PAYABLES: PayableAccountItem[] = [
   }
 ];
 
-const INITIAL_GENERAL_EXPENSES: GeneralExpenseItem[] = [
+const INITIAL_GENERAL_EXPENSES: any[] = [
   {
     id: 'exp-1',
     date: '2026-11-05',
@@ -248,7 +248,7 @@ const INITIAL_GENERAL_EXPENSES: GeneralExpenseItem[] = [
   }
 ];
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
+const INITIAL_TRANSACTIONS: any[] = [
   {
     id: 'tx-1',
     date: '2026-11-20',
@@ -281,7 +281,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   }
 ];
 
-const INITIAL_BLOCKS: DashboardBlock[] = [
+const INITIAL_BLOCKS: any[] = [
   {
     id: 'blk-kpi-1',
     type: 'kpi_summary',
