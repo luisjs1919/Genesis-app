@@ -10,10 +10,141 @@ export interface CloudBusinessRecord {
   app_state: Record<string, unknown> | null;
   bcv_usd_rate?: number | null;
   bcv_eur_rate?: number | null;
+  updated_at?: string | null;
 }
 
 export function normalizeRif(rif: string): string {
   return rif.trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function mapBusinessRow(row: Record<string, unknown>, fallbackName = 'Genesis-app'): CloudBusinessRecord {
+  const resolvedName =
+    (typeof row.name === 'string' && row.name.trim()) ||
+    (typeof row.business_name === 'string' && row.business_name.trim()) ||
+    fallbackName;
+
+  const rawAppState = row.app_state;
+  const parsedAppState =
+    rawAppState && typeof rawAppState === 'object' && !Array.isArray(rawAppState)
+      ? (rawAppState as Record<string, unknown>)
+      : {};
+
+  return {
+    id: String(row.id),
+    name: resolvedName,
+    business_name: resolvedName,
+    tax_id: typeof row.tax_id === 'string' ? row.tax_id : null,
+    app_state: parsedAppState,
+    bcv_usd_rate: typeof row.bcv_usd_rate === 'number' ? row.bcv_usd_rate : null,
+    bcv_eur_rate: typeof row.bcv_eur_rate === 'number' ? row.bcv_eur_rate : null,
+    updated_at: typeof row.updated_at === 'string' ? row.updated_at : null,
+  };
+}
+
+/**
+ * Carga el negocio sincronizado en la nube para cualquier dispositivo (PC, tablet o móvil),
+ * priorizando el negocio del usuario autenticado si existe o el negocio activo más reciente.
+ */
+export async function loadActiveBusinessCloudState(
+  preferredRif?: string | null,
+  fallbackName = 'Genesis-app'
+): Promise<CloudBusinessRecord | null> {
+  const supabase = getSupabaseBrowserClient();
+
+  if (preferredRif && preferredRif.trim()) {
+    const cleanRif = normalizeRif(preferredRif);
+    const { data: byRif, error: rifErr } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('tax_id', cleanRif)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!rifErr && byRif) {
+      return mapBusinessRow(byRif as Record<string, unknown>, fallbackName);
+    }
+  }
+
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id;
+
+  if (userId) {
+    const { data: memberRow } = await supabase
+      .from('business_members')
+      .select('business_id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (memberRow?.business_id) {
+      const { data: memberBiz, error: memberBizErr } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', memberRow.business_id)
+        .maybeSingle();
+
+      if (!memberBizErr && memberBiz) {
+        return mapBusinessRow(memberBiz as Record<string, unknown>, fallbackName);
+      }
+    }
+
+    const { data: ownedBiz, error: ownedErr } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('owner_user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!ownedErr && ownedBiz) {
+      return mapBusinessRow(ownedBiz as Record<string, unknown>, fallbackName);
+    }
+  }
+
+  const { data: latestBiz, error: latestErr } = await supabase
+    .from('businesses')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!latestErr && latestBiz) {
+    return mapBusinessRow(latestBiz as Record<string, unknown>, fallbackName);
+  }
+
+  const { data: latestAccount, error: accErr } = await supabase
+    .from('commerce_accounts')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!accErr && latestAccount) {
+    const accRow = latestAccount as Record<string, unknown>;
+    const accName =
+      (typeof accRow.company_name === 'string' && accRow.company_name.trim()) || fallbackName;
+    const accRif = typeof accRow.rif === 'string' ? normalizeRif(accRow.rif) : null;
+
+    return {
+      id: String(accRow.id),
+      name: accName,
+      business_name: accName,
+      tax_id: accRif,
+      app_state: {
+        businessName: accName,
+        company_name: accName,
+        rif: accRif,
+        taxId: accRif,
+      },
+      bcv_usd_rate: null,
+      bcv_eur_rate: null,
+      updated_at: typeof accRow.updated_at === 'string' ? accRow.updated_at : null,
+    };
+  }
+
+  return null;
 }
 
 export async function getOrCreateBusinessByRif(
@@ -29,8 +160,9 @@ export async function getOrCreateBusinessByRif(
 
   const { data: existing, error: findError } = await supabase
     .from('businesses')
-    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .select('*')
     .eq('tax_id', cleanRif)
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -39,33 +171,28 @@ export async function getOrCreateBusinessByRif(
   }
 
   if (existing) {
-    return {
-      ...existing,
-      name: existing.business_name || fallbackName,
-    } as CloudBusinessRecord;
+    return mapBusinessRow(existing as Record<string, unknown>, fallbackName);
   }
 
   const { data: created, error: createError } = await supabase
     .from('businesses')
     .insert({
+      name: fallbackName,
       business_name: fallbackName,
       tax_id: cleanRif,
-      app_state: null,
+      app_state: {},
     })
-    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .select('*')
     .single();
 
   if (createError || !created) {
     throw createError || new Error('No se pudo crear el negocio por RIF en Supabase.');
   }
 
-  return {
-    ...created,
-    name: created.business_name || fallbackName,
-  } as CloudBusinessRecord;
+  return mapBusinessRow(created as Record<string, unknown>, fallbackName);
 }
 
-export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Promise<{
+export async function getOrCreateUserBusiness(fallbackName = 'Genesis-app'): Promise<{
   userId: string;
   business: CloudBusinessRecord;
   isNew: boolean;
@@ -74,7 +201,13 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData?.user) {
-    return null;
+    const sharedBusiness = await loadActiveBusinessCloudState(null, fallbackName);
+    if (!sharedBusiness) return null;
+    return {
+      userId: '00000000-0000-0000-0000-000000000001',
+      business: sharedBusiness,
+      isNew: false,
+    };
   }
 
   const userId = authData.user.id;
@@ -115,17 +248,14 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
   if (businessId) {
     const { data: biz, error: bizError } = await supabase
       .from('businesses')
-      .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+      .select('*')
       .eq('id', businessId)
       .single();
 
     if (!bizError && biz) {
       return {
         userId,
-        business: {
-          ...biz,
-          name: biz.business_name || fallbackName,
-        } as CloudBusinessRecord,
+        business: mapBusinessRow(biz as Record<string, unknown>, fallbackName),
         isNew: false,
       };
     }
@@ -134,12 +264,13 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
   const { data: createdBiz, error: createError } = await supabase
     .from('businesses')
     .insert({
+      name: fallbackName,
       business_name: fallbackName,
       owner_user_id: userId,
       tax_id: null,
-      app_state: null,
+      app_state: {},
     })
-    .select('id, business_name, tax_id, app_state, bcv_usd_rate, bcv_eur_rate')
+    .select('*')
     .single();
 
   if (createError || !createdBiz) {
@@ -157,10 +288,7 @@ export async function getOrCreateUserBusiness(fallbackName = 'Mi Negocio'): Prom
 
   return {
     userId,
-    business: {
-      ...createdBiz,
-      name: createdBiz.business_name || fallbackName,
-    } as CloudBusinessRecord,
+    business: mapBusinessRow(createdBiz as Record<string, unknown>, fallbackName),
     isNew: true,
   };
 }
@@ -174,18 +302,22 @@ export async function saveBusinessCloudState(params: {
   bcvEurRate?: number | null;
 }): Promise<void> {
   const supabase = getSupabaseBrowserClient();
+  const nowIso = new Date().toISOString();
+
   const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
   };
 
   if (typeof params.name === 'string' && params.name.trim()) {
-    payload.business_name = params.name.trim();
+    const cleanName = params.name.trim();
+    payload.name = cleanName;
+    payload.business_name = cleanName;
   }
   if (params.taxId !== undefined) {
     payload.tax_id = params.taxId ? normalizeRif(params.taxId) : null;
   }
   if (params.appState !== undefined) {
-    payload.app_state = params.appState;
+    payload.app_state = params.appState ?? {};
   }
   if (typeof params.bcvUsdRate === 'number' && !Number.isNaN(params.bcvUsdRate)) {
     payload.bcv_usd_rate = params.bcvUsdRate;
@@ -201,5 +333,28 @@ export async function saveBusinessCloudState(params: {
 
   if (error) {
     throw error;
+  }
+
+  const effectiveRif =
+    typeof payload.tax_id === 'string' && payload.tax_id
+      ? payload.tax_id
+      : undefined;
+  const effectiveName =
+    typeof payload.name === 'string' && payload.name
+      ? payload.name
+      : undefined;
+
+  if (effectiveRif && effectiveName) {
+    await supabase
+      .from('commerce_accounts')
+      .upsert(
+        {
+          rif: effectiveRif,
+          company_name: effectiveName,
+          is_active: true,
+          updated_at: nowIso,
+        },
+        { onConflict: 'rif' }
+      );
   }
 }
