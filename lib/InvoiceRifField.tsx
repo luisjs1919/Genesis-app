@@ -11,6 +11,37 @@ interface InvoiceRifFieldProps {
   inputClassName?: string;
 }
 
+function useSyncedInvoiceRif(
+  activeRif: string,
+  setInvoiceHeader: React.Dispatch<React.SetStateAction<any>>
+) {
+  const lockedRif = (activeRif || "").trim();
+  const isRifLocked = Boolean(lockedRif);
+
+  React.useEffect(() => {
+    if (!lockedRif) return;
+
+    setInvoiceHeader((prev: any) => {
+      const currentRif = String(prev?.rif ?? "").trim();
+      const currentTaxId = String(prev?.taxId ?? "").trim();
+      if (currentRif === lockedRif && currentTaxId === lockedRif) {
+        return prev;
+      }
+
+      const next: Record<string, any> = { ...prev };
+      if (Object.prototype.hasOwnProperty.call(prev || {}, "rif") || !Object.prototype.hasOwnProperty.call(prev || {}, "taxId")) {
+        next.rif = lockedRif;
+      }
+      if (Object.prototype.hasOwnProperty.call(prev || {}, "taxId")) {
+        next.taxId = lockedRif;
+      }
+      return next;
+    });
+  }, [lockedRif, setInvoiceHeader]);
+
+  return { isRifLocked, lockedRif };
+}
+
 export function InvoiceRifField({
   invoiceHeader,
   setInvoiceHeader,
