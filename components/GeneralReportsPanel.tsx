@@ -182,8 +182,8 @@ export default function GeneralReportsPanel({
       const absAmount = Math.abs(tx.amount);
       const matchedProduct = products.find(
         (p) =>
-          tx.merchant.toLowerCase().includes(p.name.toLowerCase()) ||
-          tx.merchant.toLowerCase().includes(p.sku.toLowerCase())
+          tx.merchant.toLowerCase().includes((p.name || '').toLowerCase()) ||
+          tx.merchant.toLowerCase().includes((p.sku || '').toLowerCase())
       );
       const unitCost = matchedProduct ? matchedProduct.costPrice : absAmount;
       const qty =
