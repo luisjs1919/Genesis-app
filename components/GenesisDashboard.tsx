@@ -1230,6 +1230,49 @@ export default function GenesisDashboard() {
     }
   }, [activeViewMode, state.operationsSection]);
 
+  const addProductToInvoice = (product: ProductItem, overrideQty?: number) => {
+    const qtyToAdd = Math.max(1, overrideQty ?? posNextMultiplier);
+    const isLowStock = product.stock < 5;
+    let resultingQty = qtyToAdd;
+
+    setInvoiceItems((prev) => {
+      const existingIdx = prev.findIndex((i) => i.productId === product.id);
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        resultingQty = updated[existingIdx].quantity + qtyToAdd;
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: resultingQty,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          sku: product.sku,
+          barcode: product.barcode,
+          name: product.name,
+          unitPrice: product.price,
+          quantity: qtyToAdd,
+          hasIva: Boolean(product.hasIva),
+        },
+      ];
+    });
+
+    if (overrideQty === undefined && posNextMultiplier > 1) {
+      setPosNextMultiplier(1);
+    }
+
+    setPosLowStockAlert(isLowStock);
+    setPosScanFeedback(
+      isLowStock
+        ? `Agregado x${qtyToAdd}: ${product.name} (Total x${resultingQty} · +$${(product.price * qtyToAdd).toFixed(2)}) — Stock bajo: ${product.stock} uds. (< 5)`
+        : `Agregado x${qtyToAdd}: ${product.name} (Total x${resultingQty} · +$${(product.price * qtyToAdd).toFixed(2)})`
+    );
+    setLastSaleBanner(null);
+  };
+
   useEffect(() => {
     let scanBuffer = '';
     let lastKeyTime = 0;
@@ -2185,48 +2228,6 @@ export default function GenesisDashboard() {
   }, [state.activeRateCurrencyCode, state.currencies.length]);
 
 
-  const addProductToInvoice = (product: ProductItem, overrideQty?: number) => {
-    const qtyToAdd = Math.max(1, overrideQty ?? posNextMultiplier);
-    const isLowStock = product.stock < 5;
-    let resultingQty = qtyToAdd;
-
-    setInvoiceItems((prev) => {
-      const existingIdx = prev.findIndex((i) => i.productId === product.id);
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        resultingQty = updated[existingIdx].quantity + qtyToAdd;
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          quantity: resultingQty,
-        };
-        return updated;
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          sku: product.sku,
-          barcode: product.barcode,
-          name: product.name,
-          unitPrice: product.price,
-          quantity: qtyToAdd,
-          hasIva: Boolean(product.hasIva),
-        },
-      ];
-    });
-
-    if (overrideQty === undefined && posNextMultiplier > 1) {
-      setPosNextMultiplier(1);
-    }
-
-    setPosLowStockAlert(isLowStock);
-    setPosScanFeedback(
-      isLowStock
-        ? `Agregado x${qtyToAdd}: ${product.name} (Total x${resultingQty} · +$${(product.price * qtyToAdd).toFixed(2)}) — Stock bajo: ${product.stock} uds. (< 5)`
-        : `Agregado x${qtyToAdd}: ${product.name} (Total x${resultingQty} · +$${(product.price * qtyToAdd).toFixed(2)})`
-    );
-    setLastSaleBanner(null);
-  };
 
   const handleSetInvoiceItemQty = (productId: string, newQty: number) => {
     const cleanQty = Math.floor(newQty);
@@ -2593,6 +2594,15 @@ export default function GenesisDashboard() {
     }
   };
 
+  const invoiceDiscountAmount = useMemo(() => {
+    if (appliedDiscountPct <= 0 || invoiceSubtotal <= 0) return 0;
+    return Number(((invoiceSubtotal * appliedDiscountPct) / 100).toFixed(2));
+  }, [appliedDiscountPct, invoiceSubtotal]);
+
+  const invoiceFinalTotal = useMemo(() => {
+    return Math.max(0, Number((invoiceSubtotal - invoiceDiscountAmount).toFixed(2)));
+  }, [invoiceSubtotal, invoiceDiscountAmount]);
+
   const handleCompleteSale = (e: React.FormEvent) => {
     e.preventDefault();
     if (invoiceItems.length === 0 || invoiceSubtotal <= 0) return;
@@ -2838,6 +2848,31 @@ export default function GenesisDashboard() {
     }));
   };
 
+  const currentOperator = useMemo(() => {
+    const list = state.operatorAccounts || DEFAULT_STATE.operatorAccounts;
+    return (
+      list.find((o) => o.id === state.currentOperatorId && o.active) ||
+      list.find((o) => o.id === state.currentOperatorId) ||
+      list.find((o) => o.active) ||
+      list[0]
+    );
+  }, [state.operatorAccounts, state.currentOperatorId]);
+
+  const currentRole = normalizeOperatorRole(currentOperator?.role);
+  const currentPermissions = useMemo(
+    () => getEffectiveOperatorPermissions(currentOperator),
+    [currentOperator]
+  );
+  const canManageOperators = currentRole === 'Administrador';
+
+  const hasPermission = (perm: OperatorPermissionKey): boolean => {
+    if (currentRole === 'Administrador') return true;
+    return currentPermissions.includes(perm);
+  };
+
+  const activeRateValue = activeRateCurrency?.rateToUsd ?? 1;
+  const activeRateSymbol = activeRateCurrency?.symbol ?? '';
+
   const handleCopilotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!copilotInput.trim()) return;
@@ -2931,7 +2966,7 @@ export default function GenesisDashboard() {
       invoiceTemplate: {
         ...DEFAULT_STATE.invoiceTemplate,
         businessName: '',
-        rif: '',
+        taxId: '',
         address: '',
         phone: '',
         email: '',
@@ -3119,27 +3154,6 @@ export default function GenesisDashboard() {
     }));
   };
 
-  const currentOperator = useMemo(() => {
-    const list = state.operatorAccounts || DEFAULT_STATE.operatorAccounts;
-    return (
-      list.find((o) => o.id === state.currentOperatorId && o.active) ||
-      list.find((o) => o.id === state.currentOperatorId) ||
-      list.find((o) => o.active) ||
-      list[0]
-    );
-  }, [state.operatorAccounts, state.currentOperatorId]);
-
-  const currentRole = normalizeOperatorRole(currentOperator?.role);
-  const currentPermissions = useMemo(
-    () => getEffectiveOperatorPermissions(currentOperator),
-    [currentOperator]
-  );
-  const canManageOperators = currentRole === 'Administrador';
-
-  const hasPermission = (perm: OperatorPermissionKey): boolean => {
-    if (currentRole === 'Administrador') return true;
-    return currentPermissions.includes(perm);
-  };
 
   useEffect(() => {
     if (!loaded) return;
@@ -3166,7 +3180,7 @@ export default function GenesisDashboard() {
         }
       }
     }
-  }, [loaded, activeViewMode, state.operationsSection, currentOperatorId, state.operators]);
+  }, [loaded, activeViewMode, state.operationsSection, state.currentOperatorId, state.operatorAccounts]);
 
   const handleCreateOperator = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3395,14 +3409,6 @@ export default function GenesisDashboard() {
     setDiscountSuccessMsg(null);
   };
 
-  const invoiceDiscountAmount = useMemo(() => {
-    if (appliedDiscountPct <= 0 || invoiceSubtotal <= 0) return 0;
-    return Number(((invoiceSubtotal * appliedDiscountPct) / 100).toFixed(2));
-  }, [appliedDiscountPct, invoiceSubtotal]);
-
-  const invoiceFinalTotal = useMemo(() => {
-    return Math.max(0, Number((invoiceSubtotal - invoiceDiscountAmount).toFixed(2)));
-  }, [invoiceSubtotal, invoiceDiscountAmount]);
 
   const handleSettleCreditSale = (saleId: string) => {
     setState((prev) => {
@@ -3498,8 +3504,6 @@ export default function GenesisDashboard() {
 
   const isDark = state.darkMode;
   const q = opsSearchQuery.trim().toLowerCase();
-  const activeRateValue = activeRateCurrency?.rateToUsd ?? 1;
-  const activeRateSymbol = activeRateCurrency?.symbol ?? '';
 
   return (
     <div className={`min-h-screen flex ${isDark ? 'bg-[#0F1115] text-gray-100' : 'bg-[#EEF2FA] text-slate-900'} font-sans`}>
