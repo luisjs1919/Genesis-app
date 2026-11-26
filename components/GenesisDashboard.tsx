@@ -15,13 +15,6 @@ import {
   ShoppingBag, Package, Truck,
   ClipboardCheck, Users, Receipt, FileText, Scale, Eye, BarChart3
 } from 'lucide-react';
-import {
-  GenesisState, Transaction, DashboardBlock, BlockType,
-  OperationsSubSection, ProductItem, SaleInvoiceItem,
-  PaymentAccountCategory, OperatorRoleType, OperatorPermissionKey, OperatorAccountItem,
-  AuditEntry, ReceivableAccountItem, PayableAccountItem,
-  SupplierItem, GeneralExpenseItem
-} from '../types/genesis';
 
 const STORAGE_KEY = 'genesis_business_dashboard_v1';
 const AUDIT_STORAGE_KEY = 'genesis_audit_log_v1';
@@ -32,7 +25,7 @@ const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
   {
     id: 'op-admin',
     name: 'Administrador Principal',
-    role: 'ADMIN' as unknown as OperatorRoleType,
+    role: 'ADMIN',
     pin: '1234',
     permissions: [
       'POS_SELL',
@@ -44,31 +37,31 @@ const DEFAULT_OPERATOR_ACCOUNTS: any[] = [
       'AUDIT_VIEW',
       'USERS_MANAGE',
       'SETTINGS_EDIT'
-    ] as unknown as OperatorPermissionKey[],
+    ],
     active: true
   },
   {
     id: 'op-cajero',
     name: 'Cajero Mostrador 01',
-    role: 'CAJERO' as unknown as OperatorRoleType,
+    role: 'CAJERO',
     pin: '2222',
-    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'] as unknown as OperatorPermissionKey[],
+    permissions: ['POS_SELL', 'CASH_MANAGE', 'DISCOUNT_APPLY', 'REPORTS_VIEW'],
     active: true
   },
   {
     id: 'op-almacen',
     name: 'Encargado Almacén',
-    role: 'ALMACEN' as unknown as OperatorRoleType,
+    role: 'ALMACEN',
     pin: '3333',
-    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'] as unknown as OperatorPermissionKey[],
+    permissions: ['INVENTORY_EDIT', 'REPORTS_VIEW'],
     active: true
   },
   {
     id: 'op-auditor',
     name: 'Auditor / Supervisor',
-    role: 'AUDITOR' as unknown as OperatorRoleType,
+    role: 'AUDITOR',
     pin: '4444',
-    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'] as unknown as OperatorPermissionKey[],
+    permissions: ['REPORTS_VIEW', 'AUDIT_VIEW'],
     active: true
   }
 ];
@@ -472,7 +465,7 @@ export default function GenesisDashboard() {
         id: 'aud-init',
         timestamp: new Date().toISOString(),
         operatorName: 'Administrador Principal',
-        role: 'ADMIN' as unknown as OperatorRoleType,
+        role: 'ADMIN',
         action: 'SYSTEM_INIT',
         detail: 'Inicialización del panel Genesis Business Dashboard'
       }
@@ -484,7 +477,7 @@ export default function GenesisDashboard() {
   const startupPinInputRef = useRef<HTMLInputElement | null>(null);
 
   const appendAuditLog = (action: string, detail: string) => {
-    const entry: AuditEntry = {
+    const entry: any = {
       id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toISOString(),
       operatorName: currentOperator?.name || 'Operador',
@@ -506,7 +499,7 @@ export default function GenesisDashboard() {
   const hasPermission = (perm: any): boolean => {
     if (!currentOperator) return true;
     if (currentOperator.role === 'ADMIN') return true;
-    return currentOperator.permissions.includes(perm);
+    return Array.isArray(currentOperator.permissions) && currentOperator.permissions.includes(perm);
   };
 
   useEffect(() => {
@@ -548,7 +541,7 @@ export default function GenesisDashboard() {
     return state.bcvUsdRate || 46.8;
   }, [state.activeRateSource, state.bcvUsdRate, state.bcvEurRate, state.parallelUsdRate]);
 
-  const addProductToInvoice = (product: ProductItem, qty = 1) => {
+  const addProductToInvoice = (product: any, qty = 1) => {
     if (!hasPermission('POS_SELL')) {
       alert('Tu rol actual no tiene permiso para facturar en POS.');
       return;
@@ -603,26 +596,26 @@ export default function GenesisDashboard() {
   }, []);
 
   const summary = useMemo(() => {
-    const incomeUsd = state.transactions
-      .filter((t) => t.type === 'income')
-      .reduce((acc, t) => acc + (Number(t.amountUsd) || 0), 0);
-    const expenseUsd = state.transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((acc, t) => acc + (Number(t.amountUsd) || 0), 0);
+    const incomeUsd = (state.transactions || [])
+      .filter((t: any) => t.type === 'income')
+      .reduce((acc: number, t: any) => acc + (Number(t.amountUsd) || 0), 0);
+    const expenseUsd = (state.transactions || [])
+      .filter((t: any) => t.type === 'expense')
+      .reduce((acc: number, t: any) => acc + (Number(t.amountUsd) || 0), 0);
     const netUsd = incomeUsd - expenseUsd;
-    const receivablesPendingUsd = state.receivables.reduce(
-      (acc, r) => acc + Math.max(0, (r.totalUsd || 0) - (r.paidUsd || 0)),
+    const receivablesPendingUsd = (state.receivables || []).reduce(
+      (acc: number, r: any) => acc + Math.max(0, (r.totalUsd || 0) - (r.paidUsd || 0)),
       0
     );
-    const payablesPendingUsd = state.payables.reduce(
-      (acc, p) => acc + Math.max(0, (p.totalUsd || 0) - (p.paidUsd || 0)),
+    const payablesPendingUsd = (state.payables || []).reduce(
+      (acc: number, p: any) => acc + Math.max(0, (p.totalUsd || 0) - (p.paidUsd || 0)),
       0
     );
-    const inventoryValueUsd = state.products.reduce(
-      (acc, item) => acc + (item.stock || 0) * (item.costUsd || 0),
+    const inventoryValueUsd = (state.products || []).reduce(
+      (acc: number, item: any) => acc + (item.stock || 0) * (item.costUsd || 0),
       0
     );
-    const lowStockCount = state.products.filter((p) => p.stock <= p.minStock).length;
+    const lowStockCount = (state.products || []).filter((p: any) => p.stock <= p.minStock).length;
 
     return {
       incomeUsd,
@@ -637,22 +630,22 @@ export default function GenesisDashboard() {
   }, [state.transactions, state.receivables, state.payables, state.products, activeRate]);
 
   const filteredTransactions = useMemo(() => {
-    return state.transactions.filter((tx) => {
+    return (state.transactions || []).filter((tx: any) => {
       const matchesCat =
         selectedCategoryFilter === 'ALL' || tx.category === selectedCategoryFilter;
       const q = searchQuery.trim().toLowerCase();
       const matchesQuery =
         !q ||
-        tx.description.toLowerCase().includes(q) ||
-        tx.category.toLowerCase().includes(q) ||
-        tx.paymentMethod.toLowerCase().includes(q);
+        String(tx.description || '').toLowerCase().includes(q) ||
+        String(tx.category || '').toLowerCase().includes(q) ||
+        String(tx.paymentMethod || '').toLowerCase().includes(q);
       return matchesCat && matchesQuery;
     });
   }, [state.transactions, selectedCategoryFilter, searchQuery]);
 
   const categories = useMemo(() => {
     const set = new Set<string>(['Ventas Mostrador', 'Compras Mercancía', 'Servicios', 'Nómina']);
-    state.transactions.forEach((t) => {
+    (state.transactions || []).forEach((t: any) => {
       if (t.category) set.add(t.category);
     });
     return Array.from(set);
@@ -664,7 +657,7 @@ export default function GenesisDashboard() {
     if (!txDescription.trim() || !Number.isFinite(numericAmount) || numericAmount <= 0) {
       return;
     }
-    const newTx: Transaction = {
+    const newTx: any = {
       id: `tx-${Date.now()}`,
       date: txDate || new Date().toISOString().slice(0, 10),
       description: txDescription.trim(),
@@ -674,9 +667,9 @@ export default function GenesisDashboard() {
       paymentMethod: txPaymentMethod,
       status: 'Completado'
     };
-    setState((prev) => ({
+    setState((prev: any) => ({
       ...prev,
-      transactions: [newTx, ...prev.transactions]
+      transactions: [newTx, ...(prev.transactions || [])]
     }));
     appendAuditLog(
       txType === 'income' ? 'INCOME_ADDED' : 'EXPENSE_ADDED',
@@ -692,10 +685,10 @@ export default function GenesisDashboard() {
       alert('No tienes permiso para eliminar registros.');
       return;
     }
-    const target = state.transactions.find((t) => t.id === id);
-    setState((prev) => ({
+    const target = (state.transactions || []).find((t: any) => t.id === id);
+    setState((prev: any) => ({
       ...prev,
-      transactions: prev.transactions.filter((t) => t.id !== id)
+      transactions: (prev.transactions || []).filter((t: any) => t.id !== id)
     }));
     if (target) {
       appendAuditLog('TX_DELETED', `${target.description} (${formatMoneyUsd(target.amountUsd)})`);
@@ -714,16 +707,16 @@ export default function GenesisDashboard() {
         ? 'Análisis por Categoría'
         : 'Tabla de Movimientos');
 
-    const block: DashboardBlock = {
+    const block: any = {
       id: `blk-${Date.now()}`,
       type: newBlockType,
       title,
       colSpan: newBlockColSpan,
       visible: true
     };
-    setState((prev) => ({
+    setState((prev: any) => ({
       ...prev,
-      blocks: [...prev.blocks, block]
+      blocks: [...(prev.blocks || []), block]
     }));
     appendAuditLog('BLOCK_ADDED', `Bloque "${title}" (${newBlockType})`);
     setNewBlockTitle('');
@@ -731,9 +724,11 @@ export default function GenesisDashboard() {
   };
 
   const toggleBlockVisibility = (blockId: string) => {
-    setState((prev) => ({
+    setState((prev: any) => ({
       ...prev,
-      blocks: prev.blocks.map((b) => (b.id === blockId ? { ...b, visible: !b.visible } : b))
+      blocks: (prev.blocks || []).map((b: any) =>
+        b.id === blockId ? { ...b, visible: !b.visible } : b
+      )
     }));
   };
 
@@ -765,13 +760,13 @@ export default function GenesisDashboard() {
     appendAuditLog('STATE_RESET', 'Restauración de valores iniciales');
   };
 
-  const handleVerifyPin = (targetOperatorId: string, onSuccess: (op: OperatorAccountItem) => void) => {
+  const handleVerifyPin = (targetOperatorId: string, onSuccess: (op: any) => void) => {
     const found = operators.find((o) => o.id === targetOperatorId);
     if (!found) {
       setPinError('Operador no encontrado.');
       return;
     }
-    if (found.pin.trim() !== pinInput.trim()) {
+    if (String(found.pin || '').trim() !== pinInput.trim()) {
       setPinError('PIN incorrecto.');
       return;
     }
@@ -821,7 +816,7 @@ export default function GenesisDashboard() {
   const handleImportExcelSheets = (sheets: ExcelSheetData[]) => {
     if (!sheets || sheets.length === 0) return;
     const firstSheet = sheets[0];
-    const importedTx: Transaction[] = [];
+    const importedTx: any[] = [];
     for (const row of firstSheet.rows || []) {
       if (!row || row.length < 2) continue;
       const desc = String(row[0] ?? '').trim();
@@ -840,9 +835,9 @@ export default function GenesisDashboard() {
       }
     }
     if (importedTx.length > 0) {
-      setState((prev) => ({
+      setState((prev: any) => ({
         ...prev,
-        transactions: [...importedTx, ...prev.transactions]
+        transactions: [...importedTx, ...(prev.transactions || [])]
       }));
       appendAuditLog('EXCEL_IMPORT', `Importados ${importedTx.length} movimientos desde "${firstSheet.name}"`);
     }
@@ -874,7 +869,14 @@ export default function GenesisDashboard() {
                 </span>
               </div>
               <p className="text-xs opacity-70">
-                Operador: <span className="font-medium">{currentOperator.name || currentOperator.label || 'Operador'}</span> ({(OPERATOR_ROLE_LABELS[String(currentOperator?.role || 'ADMIN')] || String(currentOperator?.role || 'Operador'))}) · Tasa activa: {activeRate.toFixed(2)} Bs
+                Operador:{' '}
+                <span className="font-medium">
+                  {currentOperator?.name || currentOperator?.label || 'Operador'}
+                </span>{' '}
+                (
+                {OPERATOR_ROLE_LABELS[String(currentOperator?.role || 'ADMIN')] ||
+                  String(currentOperator?.role || 'Operador')}
+                ) · Tasa activa: {activeRate.toFixed(2)} Bs
               </p>
             </div>
           </div>
@@ -918,7 +920,7 @@ export default function GenesisDashboard() {
             <button
               type="button"
               onClick={() => {
-                setSelectedOperatorId(currentOperator.id);
+                setSelectedOperatorId(currentOperator?.id || DEFAULT_OPERATOR_ACCOUNTS[0].id);
                 setPinInput('');
                 setPinError('');
                 setIsSwitchOperatorOpen(true);
@@ -1055,9 +1057,9 @@ export default function GenesisDashboard() {
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              {state.blocks
-                .filter((b) => b.visible)
-                .map((block) => (
+              {(state.blocks || [])
+                .filter((b: any) => b.visible)
+                .map((block: any) => (
                   <section
                     key={block.id}
                     className={`rounded-2xl border p-4 shadow-xs ${
@@ -1170,7 +1172,7 @@ export default function GenesisDashboard() {
                                 </td>
                               </tr>
                             ) : (
-                              filteredTransactions.map((tx) => (
+                              filteredTransactions.map((tx: any) => (
                                 <tr key={tx.id}>
                                   <td className="py-2.5 pr-3 whitespace-nowrap">{tx.date}</td>
                                   <td className="py-2.5 pr-3 font-medium">{tx.description}</td>
@@ -1234,7 +1236,8 @@ export default function GenesisDashboard() {
               <div>
                 <h2 className="text-base font-bold">Inventario de Productos</h2>
                 <p className="text-xs opacity-70">
-                  Total productos: {state.products.length} · Valor costo: {formatMoneyUsd(summary.inventoryValueUsd)}
+                  Total productos: {(state.products || []).length} · Valor costo:{' '}
+                  {formatMoneyUsd(summary.inventoryValueUsd)}
                 </p>
               </div>
             </div>
@@ -1253,13 +1256,15 @@ export default function GenesisDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
-                  {state.products.map((prod) => (
+                  {(state.products || []).map((prod: any) => (
                     <tr key={prod.id}>
                       <td className="py-2.5 pr-3 font-mono">{prod.sku}</td>
                       <td className="py-2.5 pr-3 font-medium">{prod.name}</td>
                       <td className="py-2.5 pr-3">{prod.category}</td>
                       <td className="py-2.5 pr-3 text-right">{formatMoneyUsd(prod.costUsd)}</td>
-                      <td className="py-2.5 pr-3 text-right font-semibold">{formatMoneyUsd(prod.priceUsd)}</td>
+                      <td className="py-2.5 pr-3 text-right font-semibold">
+                        {formatMoneyUsd(prod.priceUsd)}
+                      </td>
                       <td className="py-2.5 pr-3 text-right">{prod.taxRate}%</td>
                       <td
                         className={`py-2.5 pr-3 text-right font-semibold ${
@@ -1296,7 +1301,7 @@ export default function GenesisDashboard() {
           >
             <h2 className="mb-4 text-base font-bold">Directorio de Proveedores</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {state.suppliers.map((sup) => (
+              {(state.suppliers || []).map((sup: any) => (
                 <div
                   key={sup.id}
                   className={`rounded-xl border p-4 ${
@@ -1331,7 +1336,7 @@ export default function GenesisDashboard() {
                 Pendiente total: {formatMoneyUsd(summary.receivablesPendingUsd)}
               </p>
               <div className="space-y-2.5">
-                {state.receivables.map((item) => {
+                {(state.receivables || []).map((item: any) => {
                   const pending = Math.max(0, item.totalUsd - item.paidUsd);
                   return (
                     <div
@@ -1366,7 +1371,7 @@ export default function GenesisDashboard() {
                 Pendiente total: {formatMoneyUsd(summary.payablesPendingUsd)}
               </p>
               <div className="space-y-2.5">
-                {state.payables.map((item) => {
+                {(state.payables || []).map((item: any) => {
                   const pending = Math.max(0, item.totalUsd - item.paidUsd);
                   return (
                     <div
@@ -1401,7 +1406,7 @@ export default function GenesisDashboard() {
           >
             <h2 className="mb-4 text-base font-bold">Gastos Operativos Generales</h2>
             <div className="space-y-2.5">
-              {state.generalExpenses.map((exp) => (
+              {(state.generalExpenses || []).map((exp: any) => (
                 <div
                   key={exp.id}
                   className={`flex items-center justify-between rounded-xl border p-3 text-xs ${
@@ -1457,7 +1462,7 @@ export default function GenesisDashboard() {
                   value={state.businessName}
                   onChange={(e) => {
                     const nextName = e.target.value;
-                    setState((prev) => ({
+                    setState((prev: any) => ({
                       ...prev,
                       businessName: nextName,
                       invoiceTemplate: {
@@ -1477,7 +1482,7 @@ export default function GenesisDashboard() {
                 value={state.businessRif}
                 onChange={(val: string) => {
                   const cleanRif = normalizeRif(val);
-                  setState((prev) => ({
+                  setState((prev: any) => ({
                     ...prev,
                     businessRif: cleanRif,
                     invoiceTemplate: {
@@ -1497,7 +1502,7 @@ export default function GenesisDashboard() {
                     step="0.01"
                     value={state.bcvUsdRate}
                     onChange={(e) =>
-                      setState((prev) => ({
+                      setState((prev: any) => ({
                         ...prev,
                         bcvUsdRate: parseFloat(e.target.value) || 0
                       }))
@@ -1514,7 +1519,7 @@ export default function GenesisDashboard() {
                     step="0.01"
                     value={state.bcvEurRate}
                     onChange={(e) =>
-                      setState((prev) => ({
+                      setState((prev: any) => ({
                         ...prev,
                         bcvEurRate: parseFloat(e.target.value) || 0
                       }))
@@ -1531,7 +1536,7 @@ export default function GenesisDashboard() {
                     step="0.01"
                     value={state.parallelUsdRate}
                     onChange={(e) =>
-                      setState((prev) => ({
+                      setState((prev: any) => ({
                         ...prev,
                         parallelUsdRate: parseFloat(e.target.value) || 0
                       }))
@@ -1570,7 +1575,7 @@ export default function GenesisDashboard() {
             >
               <h2 className="mb-3 text-base font-bold">Bitácora de Auditoría</h2>
               <div className="max-h-80 space-y-2 overflow-y-auto pr-1 text-xs">
-                {auditLogs.map((log) => (
+                {auditLogs.map((log: any) => (
                   <div
                     key={log.id}
                     className={`rounded-lg border p-2.5 ${
@@ -1595,7 +1600,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 shadow-xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1717,7 +1724,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 shadow-xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1760,7 +1769,7 @@ export default function GenesisDashboard() {
                 <label className="mb-1 block font-medium">Ancho de Columnas</label>
                 <select
                   value={newBlockColSpan}
-                  onChange={(e) => setNewBlockColSpan((Number(e.target.value) === 2 ? 2 : 1))}
+                  onChange={(e) => setNewBlockColSpan(Number(e.target.value) === 2 ? 2 : 1)}
                   className={`w-full rounded-lg border px-3 py-2 ${
                     darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'
                   }`}
@@ -1794,7 +1803,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 shadow-xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1824,7 +1835,10 @@ export default function GenesisDashboard() {
                 >
                   {operators.map((op) => (
                     <option key={op.id} value={op.id}>
-                      {op.name || op.label || 'Operador'} ({(OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] || String(op?.role || 'Operador'))})
+                      {op.name || op.label || 'Operador'} (
+                      {OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] ||
+                        String(op?.role || 'Operador')}
+                      )
                     </option>
                   ))}
                 </select>
@@ -1869,7 +1883,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
           <div
             className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <h3 className="mb-1 text-base font-bold">Desbloquear Genesis</h3>
@@ -1893,7 +1909,10 @@ export default function GenesisDashboard() {
               >
                 {operators.map((op) => (
                   <option key={op.id} value={op.id}>
-                    {op.name || op.label || 'Operador'} ({(OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] || String(op?.role || 'Operador'))})
+                    {op.name || op.label || 'Operador'} (
+                    {OPERATOR_ROLE_LABELS[String(op?.role || 'ADMIN')] ||
+                      String(op?.role || 'Operador')}
+                    )
                   </option>
                 ))}
               </select>
@@ -1925,7 +1944,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             className={`w-full max-w-lg rounded-2xl border p-5 shadow-xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -1971,7 +1992,9 @@ export default function GenesisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             className={`w-full max-w-lg rounded-2xl border p-5 shadow-xl ${
-              darkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+              darkMode
+                ? 'border-slate-800 bg-slate-900 text-slate-100'
+                : 'border-slate-200 bg-white text-slate-900'
             }`}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -2011,8 +2034,8 @@ export default function GenesisDashboard() {
       )}
 
       <GenesisCloudSyncLayer
-        state={state as any}
-        setState={setState as any}
+        state={state}
+        setState={setState}
         localStorageKey={STORAGE_KEY}
       />
     </div>
