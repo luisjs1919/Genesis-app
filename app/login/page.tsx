@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../lib/supabaseBrowser';
 
+const TARGET_ROUTE = '/ventas';
+
 export default function GenesisLoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -26,29 +28,39 @@ export default function GenesisLoginPage() {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
-          password
+          password,
         });
         if (error) throw error;
-        router.push('/app');
+        router.push(TARGET_ROUTE);
         router.refresh();
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
-          password
+          password,
         });
         if (error) throw error;
 
-        if (data.user && businessName.trim()) {
-          // Si hay sesión activa inmediata, crea el negocio base
-          if (data.session) {
-            await supabase.from('businesses').insert({
+        if (data.user && businessName.trim() && data.session) {
+          const { data: createdBusiness, error: bizError } = await supabase
+            .from('businesses')
+            .insert({
               name: businessName.trim(),
-              owner_user_id: data.user.id
+              owner_user_id: data.user.id,
+            })
+            .select('id')
+            .single();
+
+          if (!bizError && createdBusiness?.id) {
+            await supabase.from('business_members').insert({
+              business_id: createdBusiness.id,
+              user_id: data.user.id,
+              role: 'owner',
             });
-            router.push('/app');
-            router.refresh();
-            return;
           }
+
+          router.push(TARGET_ROUTE);
+          router.refresh();
+          return;
         }
 
         setInfoMsg(
