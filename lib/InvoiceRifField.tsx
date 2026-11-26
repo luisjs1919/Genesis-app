@@ -1,5 +1,5 @@
 import React from "react";
-import { resolveActiveCommerceRif, useSyncedInvoiceRif } from "@/lib/useSyncedInvoiceRif";
+import { resolveActiveCommerceRif } from "@/lib/useSyncedInvoiceRif";
 
 interface InvoiceRifFieldProps {
   invoiceHeader: Record<string, any>;
