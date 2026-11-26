@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 
 // Configura estas variables en tu archivo .env.local:
@@ -99,12 +100,20 @@ export default function GenesisAfiliacionPage() {
             </div>
           </div>
 
-          <a
-            href="#afiliacion"
-            className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
-          >
-            Afiliar mi negocio
-          </a>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-sky-500 hover:text-sky-300"
+            >
+              Iniciar sesión
+            </Link>
+            <a
+              href="#afiliacion"
+              className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+            >
+              Afiliar mi negocio
+            </a>
+          </div>
         </div>
       </header>
 
@@ -131,6 +140,12 @@ export default function GenesisAfiliacionPage() {
               >
                 Solicitar afiliación ahora
               </a>
+              <Link
+                href="/login"
+                className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-6 py-3 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20"
+              >
+                Iniciar sesión
+              </Link>
               <a
                 href="#funciones"
                 className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500"
