@@ -13,15 +13,19 @@ import {
 import { GeneralExpenseItem, ProductItem, SaleRecord, Transaction } from '../types/genesis';
 
 interface GeneralReportsPanelProps {
-  sales: SaleRecord[];
-  products: ProductItem[];
-  transactions: Transaction[];
+  sales?: SaleRecord[];
+  products?: ProductItem[];
+  transactions?: Transaction[];
   generalExpenses?: GeneralExpenseItem[];
-  rateToUsd: number;
-  currencySymbol: string;
+  rateToUsd?: number;
+  currencySymbol?: string;
   businessName?: string;
   businessTaxId?: string;
   isDark?: boolean;
+  state?: any;
+  activeRate?: any;
+  darkMode?: boolean;
+  onImportSheets?: (sheets: any[]) => void;
 }
 
 interface DetailedMovementRow {
@@ -80,16 +84,63 @@ function getMonthNameEs(isoDate: string): string {
 }
 
 export default function GeneralReportsPanel({
-  sales,
-  products,
-  transactions,
-  generalExpenses = [],
-  rateToUsd = 46.5,
-  currencySymbol = 'Bs.',
-  businessName = 'Génesis Comercial',
-  businessTaxId = 'J-40123456-7',
-  isDark = true,
+  sales: salesProp,
+  products: productsProp,
+  transactions: transactionsProp,
+  generalExpenses: generalExpensesProp,
+  rateToUsd: rateToUsdProp,
+  currencySymbol: currencySymbolProp,
+  businessName: businessNameProp,
+  businessTaxId: businessTaxIdProp,
+  isDark: isDarkProp,
+  state,
+  activeRate,
+  darkMode,
+  onImportSheets,
 }: GeneralReportsPanelProps) {
+  const sales = salesProp ?? state?.sales ?? [];
+  const products = productsProp ?? state?.products ?? [];
+  const transactions = transactionsProp ?? state?.transactions ?? [];
+  const generalExpenses = generalExpensesProp ?? state?.generalExpenses ?? [];
+
+  const resolvedRateCurrency = useMemo(() => {
+    if (activeRate && typeof activeRate === 'object') return activeRate;
+    const list = state?.currencies || [];
+    const activeCode = state?.activeRateCurrencyCode;
+    return (
+      list.find((c: { code?: string }) => c.code === activeCode) ||
+      list.find((c: { isBase?: boolean }) => !c.isBase) ||
+      list[0]
+    );
+  }, [activeRate, state]);
+
+  const rateToUsd =
+    typeof rateToUsdProp === 'number'
+      ? rateToUsdProp
+      : typeof activeRate === 'number'
+      ? activeRate
+      : Number(resolvedRateCurrency?.rateToUsd ?? 46.5);
+
+  const currencySymbol =
+    currencySymbolProp ??
+    (typeof resolvedRateCurrency?.symbol === 'string' && resolvedRateCurrency.symbol
+      ? resolvedRateCurrency.symbol
+      : 'Bs.');
+
+  const businessName =
+    businessNameProp ?? state?.invoiceTemplate?.businessName ?? 'Génesis Comercial';
+  const businessTaxId =
+    businessTaxIdProp ?? state?.invoiceTemplate?.taxId ?? 'J-40123456-7';
+  const isDark =
+    typeof isDarkProp === 'boolean'
+      ? isDarkProp
+      : typeof darkMode === 'boolean'
+      ? darkMode
+      : typeof state?.darkMode === 'boolean'
+      ? state.darkMode
+      : true;
+
+  void onImportSheets;
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const monthStartStr = useMemo(() => `${todayStr.slice(0, 8)}01`, [todayStr]);
 
