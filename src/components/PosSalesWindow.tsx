@@ -539,8 +539,9 @@ export default function PosSalesWindow({
   const authorizedAdminPins = useMemo(() => {
     if (!state) return [];
     const pins: string[] = [];
-    if (state.adminDiscountPin && state.adminDiscountPin.trim()) {
-      pins.push(state.adminDiscountPin.trim());
+    const rawDiscountPin = state.adminDiscountPin ? String(state.adminDiscountPin).trim() : '';
+    if (rawDiscountPin) {
+      pins.push(rawDiscountPin);
     }
     (state.operatorAccounts || []).forEach((op) => {
       if ((String(op.role) === 'Administrador' || String(op.role) === 'Admin') && op.pin && op.pin.trim()) {
