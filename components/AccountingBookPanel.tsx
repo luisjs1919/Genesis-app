@@ -27,6 +27,12 @@ interface LedgerEntry {
   balanceUsd: number;
 }
 
+function toSafeString(val: unknown, fallback = ''): string {
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  return fallback;
+}
+
 export default function AccountingBookPanel({
   sales,
   transactions,
@@ -44,11 +50,14 @@ export default function AccountingBookPanel({
 
     (sales || []).forEach((s) => {
       const amt = Math.abs(Number(s.total || 0));
+      const refStr = toSafeString(s.reference).trim() || toSafeString(s.id).trim() || 'S/R';
+      const custStr = toSafeString(s.customerOrNote).trim() || 'Cliente';
+      const payStr = toSafeString(s.paymentType).trim() || 'Contado';
       raw.push({
-        id: `sale-${s.id}`,
-        date: String(s.date || '').slice(0, 10),
-        reference: s.reference || s.id,
-        concept: `Venta — ${s.customerOrNote || 'Cliente'} (${s.paymentType || 'Contado'})`,
+        id: `sale-${toSafeString(s.id)}`,
+        date: toSafeString(s.date).slice(0, 10),
+        reference: refStr,
+        concept: `Venta — ${custStr} (${payStr})`,
         source: 'Venta',
         debitUsd: amt,
         creditUsd: 0,
@@ -58,11 +67,12 @@ export default function AccountingBookPanel({
     (transactions || []).forEach((t) => {
       const val = Number(t.amount || 0);
       const isIncome = val >= 0;
+      const txId = toSafeString(t.id).trim() || 'MOV';
       raw.push({
-        id: `tx-${t.id}`,
-        date: String(t.date || '').slice(0, 10),
-        reference: t.id,
-        concept: t.merchant || 'Movimiento contable',
+        id: `tx-${txId}`,
+        date: toSafeString(t.date).slice(0, 10),
+        reference: txId,
+        concept: toSafeString(t.merchant).trim() || 'Movimiento contable',
         source: 'Movimiento',
         debitUsd: isIncome ? Math.abs(val) : 0,
         creditUsd: !isIncome ? Math.abs(val) : 0,
@@ -71,12 +81,15 @@ export default function AccountingBookPanel({
 
     (generalExpenses || []).forEach((g) => {
       const amt = Math.abs(Number(g.amount || 0));
-      const inv = g.invoiceNumber && g.invoiceNumber !== 'S/N' ? ` · Fact. ${g.invoiceNumber}` : '';
+      const rawInv = toSafeString(g.invoiceNumber).trim();
+      const gId = toSafeString(g.id).trim() || 'GASTO';
+      const inv = rawInv && rawInv !== 'S/N' ? ` · Fact. ${rawInv}` : '';
+      const reasonStr = toSafeString(g.reason).trim() || 'Gasto general';
       raw.push({
-        id: `exp-${g.id}`,
-        date: String(g.date || '').slice(0, 10),
-        reference: g.invoiceNumber || g.id,
-        concept: `Gasto: ${g.reason || 'Gasto general'}${inv}`,
+        id: `exp-${gId}`,
+        date: toSafeString(g.date).slice(0, 10),
+        reference: rawInv || gId,
+        concept: `Gasto: ${reasonStr}${inv}`,
         source: 'Gasto General',
         debitUsd: 0,
         creditUsd: amt,
