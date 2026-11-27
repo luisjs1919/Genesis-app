@@ -117,18 +117,20 @@ export default function GeneralReportsPanel({
   };
 
   const filteredSales = useMemo(() => {
-    return sales.filter((s) => {
-      if (dateFrom && s.date < dateFrom) return false;
-      if (dateTo && s.date > dateTo) return false;
+    return (sales || []).filter((s) => {
+      const saleDate = String(s.date || '').slice(0, 10);
+      if (dateFrom && (!saleDate || saleDate < dateFrom)) return false;
+      if (dateTo && (!saleDate || saleDate > dateTo)) return false;
       return true;
     });
   }, [sales, dateFrom, dateTo]);
 
   const filteredPurchaseTxs = useMemo(() => {
-    return transactions.filter((t) => {
-      if (t.amount >= 0) return false;
-      if (dateFrom && t.date < dateFrom) return false;
-      if (dateTo && t.date > dateTo) return false;
+    return (transactions || []).filter((t) => {
+      if (Number(t.amount || 0) >= 0) return false;
+      const txDate = String(t.date || '').slice(0, 10);
+      if (dateFrom && (!txDate || txDate < dateFrom)) return false;
+      if (dateTo && (!txDate || txDate > dateTo)) return false;
       return true;
     });
   }, [transactions, dateFrom, dateTo]);
@@ -136,8 +138,8 @@ export default function GeneralReportsPanel({
   const filteredExpenses = useMemo(() => {
     return (generalExpenses || []).filter((g) => {
       const gDay = String(g.date || '').slice(0, 10);
-      if (dateFrom && gDay < dateFrom) return false;
-      if (dateTo && gDay > dateTo) return false;
+      if (dateFrom && (!gDay || gDay < dateFrom)) return false;
+      if (dateTo && (!gDay || gDay > dateTo)) return false;
       return true;
     });
   }, [generalExpenses, dateFrom, dateTo]);
@@ -146,18 +148,23 @@ export default function GeneralReportsPanel({
     const rows: DetailedMovementRow[] = [];
 
     filteredSales.forEach((sale) => {
+      const safeDate = String(sale.date || '');
+      const safeTotal = Number(sale.total || 0);
+
       if (sale.items && sale.items.length > 0) {
         sale.items.forEach((item, idx) => {
-          const lineTotal = Number((item.unitPrice * item.quantity).toFixed(2));
+          const qty = Number(item.quantity || 0);
+          const unitPrice = Number(item.unitPrice || 0);
+          const lineTotal = Number((unitPrice * qty).toFixed(2));
           rows.push({
             id: `${sale.id}-item-${idx}`,
-            date: sale.date,
+            date: safeDate,
             operationType: 'Venta',
             reference: sale.reference || sale.id,
             sku: item.sku || 'N/A',
             productName: item.name,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            quantity: qty,
+            unitPrice,
             subtotal: lineTotal,
             paymentOrCategory: sale.paymentType || 'Contado',
           });
@@ -165,36 +172,37 @@ export default function GeneralReportsPanel({
       } else {
         rows.push({
           id: `${sale.id}-gen`,
-          date: sale.date,
+          date: safeDate,
           operationType: 'Venta',
           reference: sale.reference || sale.id,
           sku: 'GEN-VTA',
           productName: sale.customerOrNote || 'Venta General',
           quantity: 1,
-          unitPrice: sale.total,
-          subtotal: sale.total,
+          unitPrice: safeTotal,
+          subtotal: safeTotal,
           paymentOrCategory: sale.paymentType || 'Contado',
         });
       }
     });
 
     filteredPurchaseTxs.forEach((tx) => {
-      const absAmount = Math.abs(tx.amount);
+      const absAmount = Math.abs(Number(tx.amount || 0));
       const merchantLower = (tx.merchant || '').toLowerCase();
-      const matchedProduct = products.find(
+      const safeProducts = products || [];
+      const matchedProduct = safeProducts.find(
         (p) =>
           merchantLower.includes((p.name || '').toLowerCase()) ||
           merchantLower.includes((p.sku || '').toLowerCase())
       );
-      const unitCost = matchedProduct ? matchedProduct.costPrice : absAmount;
+      const unitCost = matchedProduct ? Number(matchedProduct.costPrice || 0) : absAmount;
       const qty =
-        matchedProduct && matchedProduct.costPrice > 0
-          ? Math.max(1, Math.round(absAmount / matchedProduct.costPrice))
+        matchedProduct && unitCost > 0
+          ? Math.max(1, Math.round(absAmount / unitCost))
           : 1;
 
       rows.push({
         id: `buy-${tx.id}`,
-        date: tx.date,
+        date: String(tx.date || ''),
         operationType: 'Compra',
         reference: tx.id.toUpperCase(),
         sku: matchedProduct?.sku || 'CMP-GEN',
@@ -210,9 +218,10 @@ export default function GeneralReportsPanel({
   }, [filteredSales, filteredPurchaseTxs, products]);
 
   const inventoryStats = useMemo(() => {
-    const totalUnits = products.reduce((acc, p) => acc + (p.stock || 0), 0);
-    const totalValue = products.reduce(
-      (acc, p) => acc + (p.stock || 0) * (p.costPrice || p.price || 0),
+    const safeProducts = products || [];
+    const totalUnits = safeProducts.reduce((acc, p) => acc + Number(p.stock || 0), 0);
+    const totalValue = safeProducts.reduce(
+      (acc, p) => acc + Number(p.stock || 0) * Number(p.costPrice || p.price || 0),
       0
     );
     return { totalUnits, totalValue };
@@ -222,10 +231,10 @@ export default function GeneralReportsPanel({
     const monthLabel = getMonthNameEs(dateTo || dateFrom);
 
     if (simpleSubject === 'ventas') {
-      const totalUsd = filteredSales.reduce((acc, s) => acc + s.total, 0);
+      const totalUsd = filteredSales.reduce((acc, s) => acc + Number(s.total || 0), 0);
       const unitsSold = filteredSales.reduce((acc, s) => {
         if (s.items && s.items.length > 0) {
-          return acc + s.items.reduce((sum, it) => sum + (it.quantity || 0), 0);
+          return acc + s.items.reduce((sum, it) => sum + Number(it.quantity || 0), 0);
         }
         return acc + 1;
       }, 0);
@@ -235,24 +244,30 @@ export default function GeneralReportsPanel({
       const byProductSold: Record<string, { qty: number; amount: number }> = {};
 
       filteredSales.forEach((s) => {
+        const saleTotal = Number(s.total || 0);
+        const saleDate = String(s.date || '');
         const method = s.paymentType || 'Efectivo';
         if (!byMethod[method]) byMethod[method] = { amount: 0, count: 0 };
-        byMethod[method].amount += s.total;
+        byMethod[method].amount += saleTotal;
         byMethod[method].count += 1;
-        byDate[s.date] = (byDate[s.date] || 0) + s.total;
+        if (saleDate) {
+          byDate[saleDate] = (byDate[saleDate] || 0) + saleTotal;
+        }
 
         if (s.items && s.items.length > 0) {
           s.items.forEach((it) => {
             const pName = it.name || 'Producto';
+            const qty = Number(it.quantity || 1);
+            const unitPrice = Number(it.unitPrice || 0);
             if (!byProductSold[pName]) byProductSold[pName] = { qty: 0, amount: 0 };
-            byProductSold[pName].qty += it.quantity || 1;
-            byProductSold[pName].amount += (it.unitPrice || 0) * (it.quantity || 1);
+            byProductSold[pName].qty += qty;
+            byProductSold[pName].amount += unitPrice * qty;
           });
         } else {
           const pName = s.customerOrNote || 'Venta General';
           if (!byProductSold[pName]) byProductSold[pName] = { qty: 0, amount: 0 };
           byProductSold[pName].qty += 1;
-          byProductSold[pName].amount += s.total;
+          byProductSold[pName].amount += saleTotal;
         }
       });
 
@@ -289,17 +304,20 @@ export default function GeneralReportsPanel({
         topItems,
       };
     } else if (simpleSubject === 'compras') {
-      const totalUsd = filteredPurchaseTxs.reduce((acc, t) => acc + Math.abs(t.amount), 0);
+      const totalUsd = filteredPurchaseTxs.reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0);
       const byConcept: Record<string, { amount: number; count: number }> = {};
       const byDate: Record<string, number> = {};
 
       filteredPurchaseTxs.forEach((t) => {
         const key = t.merchant || 'Compra';
-        const val = Math.abs(t.amount);
+        const val = Math.abs(Number(t.amount || 0));
+        const txDate = String(t.date || '');
         if (!byConcept[key]) byConcept[key] = { amount: 0, count: 0 };
         byConcept[key].amount += val;
         byConcept[key].count += 1;
-        byDate[t.date] = (byDate[t.date] || 0) + val;
+        if (txDate) {
+          byDate[txDate] = (byDate[txDate] || 0) + val;
+        }
       });
 
       const topItems = Object.entries(byConcept)
@@ -408,7 +426,9 @@ export default function GeneralReportsPanel({
         byProduct[r.productName].compras += r.subtotal;
         byProduct[r.productName].uCompra += r.quantity;
       }
-      byDateMov[r.date] = (byDateMov[r.date] || 0) + r.subtotal;
+      if (r.date) {
+        byDateMov[r.date] = (byDateMov[r.date] || 0) + r.subtotal;
+      }
     });
 
     const productStats = Object.entries(byProduct)
@@ -1188,127 +1208,3 @@ export default function GeneralReportsPanel({
                                   </td>
                                   <td className="py-1.5 px-2.5 font-semibold uppercase">
                                     {row.label}
-                                  </td>
-                                  <td className="py-1.5 px-2 text-right font-semibold tabular-nums">
-                                    {row.qty}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-right font-bold tabular-nums">
-                                    $ {row.amount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                      <div className="ex-card-box p-3">
-                        <div className="flex justify-end text-[10px] ex-muted mb-1">📦</div>
-                        {renderPieChart(simpleSummary.topItems)}
-                      </div>
-
-                      <div className="ex-card-box p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-bold ex-kpi-label">
-                            {simpleSummary.accountTitle}
-                          </span>
-                          <span className="text-[10px] ex-muted">💲</span>
-                        </div>
-                        {renderAccountBar(simpleSummary.accountLabel, simpleSummary.accountAmount)}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-3.5">
-                      <div className="ex-kpi-card px-4 py-3 text-center">
-                        <div className="ex-kpi-label text-[11px] font-semibold">
-                          Total Ventas Productos
-                        </div>
-                        <div className="ex-kpi-val text-base font-extrabold tabular-nums mt-1 text-emerald-700">
-                          $ {detailedSummary.totalVentasUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-
-                      <div className="ex-kpi-card px-4 py-3 text-center">
-                        <div className="ex-kpi-label text-[11px] font-semibold">
-                          Total Compras Productos
-                        </div>
-                        <div className="ex-kpi-val text-base font-extrabold tabular-nums mt-1 text-rose-700">
-                          $ {detailedSummary.totalComprasUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-
-                      <div className="ex-kpi-card px-4 py-3 text-center">
-                        <div className="ex-kpi-label text-[11px] font-semibold">
-                          Balance Neto / Unidades
-                        </div>
-                        <div className="ex-kpi-val text-sm font-extrabold tabular-nums mt-1">
-                          $ {detailedSummary.netBalanceUsd.toFixed(2)}
-                        </div>
-                        <div className="text-[10.5px] ex-muted tabular-nums">
-                          V: {detailedSummary.unitsSold} uds · C: {detailedSummary.unitsBought} uds
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="ex-pill-banner py-1.5 px-4 text-center text-[11.5px] font-bold mb-2">
-                        Comportamiento diario de movimientos ({dateFrom} al {dateTo})
-                      </div>
-                      <div className="ex-card-box p-2.5">
-                        {renderBehaviorLineChart(detailedSummary.dailySeries)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="ex-pill-banner py-1.5 px-4 text-center text-[11.5px] font-bold mb-2">
-                        Detalle producto a producto (Compras y Ventas)
-                      </div>
-                      <div className="overflow-hidden rounded-lg border border-slate-300">
-                        <table className="ex-table text-[10px]">
-                          <thead>
-                            <tr>
-                              <th className="py-1.5 px-1.5 text-left">Fecha</th>
-                              <th className="py-1.5 px-1.5 text-left">Tipo</th>
-                              <th className="py-1.5 px-1.5 text-left">SKU</th>
-                              <th className="py-1.5 px-1.5 text-left">Producto</th>
-                              <th className="py-1.5 px-1.5 text-right">Cant.</th>
-                              <th className="py-1.5 px-1.5 text-right">P. Unit</th>
-                              <th className="py-1.5 px-1.5 text-right">Subtotal</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detailedRows.map((row) => (
-                              <tr key={row.id}>
-                                <td className="py-1.5 px-1.5 tabular-nums">{row.date}</td>
-                                <td className="py-1.5 px-1.5 font-bold">{row.operationType}</td>
-                                <td className="py-1.5 px-1.5 font-mono">{row.sku}</td>
-                                <td className="py-1.5 px-1.5">{row.productName}</td>
-                                <td className="py-1.5 px-1.5 text-right tabular-nums">
-                                  {row.quantity}
-                                </td>
-                                <td className="py-1.5 px-1.5 text-right tabular-nums">
-                                  ${row.unitPrice.toFixed(2)}
-                                </td>
-                                <td className="py-1.5 px-1.5 text-right font-bold tabular-nums">
-                                  ${row.subtotal.toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
