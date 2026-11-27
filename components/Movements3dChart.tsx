@@ -4,12 +4,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, RotateCcw } from 'lucide-react';
 import { GeneralExpenseItem, SaleRecord, Transaction } from '../types/genesis';
 
-interface Movements3dChartProps {
-  sales: SaleRecord[];
+export interface Movements3dChartProps {
+  sales?: SaleRecord[];
   transactions: Transaction[];
   generalExpenses?: GeneralExpenseItem[];
   boardDate?: string;
+  mode?: 'cashflow' | 'categories' | string;
   isDark?: boolean;
+  darkMode?: boolean;
 }
 
 interface BarDatum3D {
@@ -21,12 +23,15 @@ interface BarDatum3D {
 }
 
 export default function Movements3dChart({
-  sales,
+  sales = [],
   transactions,
   generalExpenses = [],
   boardDate,
-  isDark = true,
+  mode = 'cashflow',
+  isDark,
+  darkMode,
 }: Movements3dChartProps) {
+  const effectiveDark = isDark ?? darkMode ?? true;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [yaw, setYaw] = useState<number>(0.52);
   const [pitch, setPitch] = useState<number>(0.42);
@@ -56,6 +61,41 @@ export default function Movements3dChart({
     const generalExpenseTotal = (generalExpenses || [])
       .filter((g) => matchDay(g.date))
       .reduce((acc, g) => acc + Math.abs(Number(g.amount || 0)), 0);
+
+    if (mode === 'categories') {
+      const byCategory: Record<string, number> = {};
+      (transactions || [])
+        .filter((t) => matchDay(t.date))
+        .forEach((t) => {
+          const txObj = t as unknown as { category?: string; merchant?: string };
+          const cat = String(txObj.category || txObj.merchant || 'General').trim() || 'General';
+          byCategory[cat] = Number(((byCategory[cat] || 0) + Math.abs(Number(t.amount || 0))).toFixed(2));
+        });
+
+      const palette = [
+        { top: '#38bdf8', left: '#0284c7', right: '#0369a1' },
+        { top: '#4ade80', left: '#16a34a', right: '#15803d' },
+        { top: '#f87171', left: '#dc2626', right: '#b91c1c' },
+        { top: '#facc15', left: '#eab308', right: '#ca8a04' },
+      ];
+
+      const topCats = Object.entries(byCategory)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4);
+
+      if (topCats.length > 0) {
+        return topCats.map(([label, value], idx) => {
+          const colors = palette[idx % palette.length];
+          return {
+            label,
+            value,
+            topColor: colors.top,
+            leftColor: colors.left,
+            rightColor: colors.right,
+          };
+        });
+      }
+    }
 
     const totalIngresos = salesTotal + txIncome;
     const totalGastos = txExpense + generalExpenseTotal;
@@ -91,7 +131,7 @@ export default function Movements3dChart({
         rightColor: '#ca8a04',
       },
     ];
-  }, [sales, transactions, generalExpenses, boardDate, scope]);
+  }, [sales, transactions, generalExpenses, boardDate, scope, mode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -130,7 +170,7 @@ export default function Movements3dChart({
 
     const gridSpanX = spacing * (bars.length * 0.55 + 0.6);
     const gridSpanZ = 56;
-    ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(79, 70, 229, 0.14)';
+    ctx.strokeStyle = effectiveDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(79, 70, 229, 0.14)';
     ctx.lineWidth = 1;
 
     for (let i = -3; i <= 3; i++) {
@@ -197,16 +237,16 @@ export default function Movements3dChart({
       ctx.closePath();
       ctx.fill();
 
-      ctx.strokeStyle = isDark ? 'rgba(15, 23, 42, 0.55)' : 'rgba(15, 23, 42, 0.25)';
+      ctx.strokeStyle = effectiveDark ? 'rgba(15, 23, 42, 0.55)' : 'rgba(15, 23, 42, 0.25)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       const topCenter = project(cx, h + 14, cz);
       ctx.save();
-      ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+      ctx.fillStyle = effectiveDark ? '#ffffff' : '#0f172a';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      if (isDark) {
+      if (effectiveDark) {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
         ctx.shadowBlur = 4;
       }
@@ -217,19 +257,19 @@ export default function Movements3dChart({
       );
 
       const baseCenter = project(cx, 0, cz + half + 20);
-      ctx.fillStyle = isDark ? '#ffffff' : '#334155';
+      ctx.fillStyle = effectiveDark ? '#ffffff' : '#334155';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(bar.label, baseCenter.px, baseCenter.py);
       ctx.restore();
     });
-  }, [bars, yaw, pitch, isDark]);
+  }, [bars, yaw, pitch, effectiveDark]);
 
   return (
     <div
       className={
         'rounded-xl border p-5 transition ' +
-        (isDark
+        (effectiveDark
           ? 'bg-[#14171D] border-gray-800 text-white'
           : 'bg-[#F7F9FE] border-indigo-200/70 text-slate-900 shadow-xs')
       }
@@ -241,12 +281,12 @@ export default function Movements3dChart({
             <h3
               className={
                 'text-xs font-semibold uppercase tracking-wider ' +
-                (isDark ? 'text-white' : 'text-slate-700')
+                (effectiveDark ? 'text-white' : 'text-slate-700')
               }
             >
               Gráfica 3D de Movimientos
             </h3>
-            <p className={'text-[11px] ' + (isDark ? 'text-gray-200' : 'text-slate-600')}>
+            <p className={'text-[11px] ' + (effectiveDark ? 'text-gray-200' : 'text-slate-600')}>
               Arrastra sobre la gráfica para rotar el ángulo 3D
             </p>
           </div>
@@ -260,7 +300,7 @@ export default function Movements3dChart({
               'px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ' +
               (scope === 'day'
                 ? 'bg-indigo-600 text-white border-indigo-600'
-                : isDark
+                : effectiveDark
                 ? 'bg-[#0F1115] border-gray-700 text-white hover:bg-gray-800'
                 : 'bg-white border-gray-300 text-slate-700 hover:bg-gray-100')
             }
@@ -276,7 +316,7 @@ export default function Movements3dChart({
             }}
             className={
               'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ' +
-              (isDark
+              (effectiveDark
                 ? 'bg-[#0F1115] border-gray-700 text-white hover:bg-gray-800'
                 : 'bg-white border-gray-300 text-slate-700 hover:bg-gray-100')
             }
