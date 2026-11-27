@@ -563,10 +563,12 @@ export default function PosSalesWindow({
 
   const activeRateCurrency = useMemo(() => {
     if (!state) return null;
+    const currencyList = Array.isArray(state.currencies) ? state.currencies : [];
+    if (currencyList.length === 0) return null;
     return (
-      state.currencies.find((c) => c.code === state.activeRateCurrencyCode) ||
-      state.currencies.find((c) => !c.isBase) ||
-      state.currencies[0]
+      currencyList.find((c) => c.code === state.activeRateCurrencyCode) ||
+      currencyList.find((c) => !c.isBase) ||
+      currencyList[0]
     );
   }, [state]);
 
@@ -576,10 +578,12 @@ export default function PosSalesWindow({
   const [itemMeasureValues, setItemMeasureValues] = useState<Record<string, number>>({});
 
   const selectedCurrencyObj = useMemo(() => {
-    if (!state) return { id: 'cur-usd', code: 'USD', name: 'Dólar Estadounidense', symbol: '$', rateToUsd: 1, isBase: true };
+    const fallbackUsd = { id: 'cur-usd', code: 'USD', name: 'Dólar Estadounidense', symbol: '$', rateToUsd: 1, isBase: true };
+    if (!state) return fallbackUsd;
+    const currencyList = Array.isArray(state.currencies) ? state.currencies : [];
     if (invoiceCurrency === 'COP') {
       return (
-        state.currencies.find((c) => c.code === 'COP') || {
+        currencyList.find((c) => c.code === 'COP') || {
           id: 'cur-cop',
           code: 'COP',
           name: 'Peso Colombiano',
@@ -590,9 +594,10 @@ export default function PosSalesWindow({
       );
     }
     return (
-      state.currencies.find((c) => c.code === invoiceCurrency) ||
-      state.currencies.find((c) => c.code === 'USD') ||
-      state.currencies[0]
+      currencyList.find((c) => c.code === invoiceCurrency) ||
+      currencyList.find((c) => c.code === 'USD') ||
+      currencyList[0] ||
+      fallbackUsd
     );
   }, [state, invoiceCurrency]);
 
