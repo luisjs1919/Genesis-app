@@ -6,14 +6,17 @@ import { GeneralExpenseItem, SaleRecord, Transaction } from '../types/genesis';
 import { generateXlsxBytes } from '../lib/excelWorkbook';
 
 interface AccountingBookPanelProps {
-  sales: SaleRecord[];
-  transactions: Transaction[];
+  sales?: SaleRecord[];
+  transactions?: Transaction[];
   generalExpenses?: GeneralExpenseItem[];
   rateToUsd?: number;
   currencySymbol?: string;
   businessName?: string;
   businessTaxId?: string;
   isDark?: boolean;
+  state?: any;
+  activeRate?: any;
+  darkMode?: boolean;
 }
 
 interface LedgerEntry {
@@ -34,15 +37,58 @@ function toSafeString(val: unknown, fallback = ''): string {
 }
 
 export default function AccountingBookPanel({
-  sales,
-  transactions,
-  generalExpenses = [],
-  rateToUsd = 46.5,
-  currencySymbol = 'Bs.',
-  businessName = 'Génesis Comercial',
-  businessTaxId = 'J-40123456-7',
-  isDark = true,
+  sales: salesProp,
+  transactions: transactionsProp,
+  generalExpenses: generalExpensesProp,
+  rateToUsd: rateToUsdProp,
+  currencySymbol: currencySymbolProp,
+  businessName: businessNameProp,
+  businessTaxId: businessTaxIdProp,
+  isDark: isDarkProp,
+  state,
+  activeRate,
+  darkMode,
 }: AccountingBookPanelProps) {
+  const sales: SaleRecord[] = salesProp ?? state?.sales ?? [];
+  const transactions: Transaction[] = transactionsProp ?? state?.transactions ?? [];
+  const generalExpenses: GeneralExpenseItem[] = generalExpensesProp ?? state?.generalExpenses ?? [];
+
+  const resolvedRateCurrency = useMemo(() => {
+    if (activeRate && typeof activeRate === 'object') return activeRate;
+    const list = state?.currencies || [];
+    const activeCode = state?.activeRateCurrencyCode;
+    return (
+      list.find((c: { code?: string }) => c.code === activeCode) ||
+      list.find((c: { isBase?: boolean }) => !c.isBase) ||
+      list[0]
+    );
+  }, [activeRate, state]);
+
+  const rateToUsd =
+    typeof rateToUsdProp === 'number'
+      ? rateToUsdProp
+      : typeof activeRate === 'number'
+      ? activeRate
+      : Number(resolvedRateCurrency?.rateToUsd ?? 46.5);
+
+  const currencySymbol =
+    currencySymbolProp ??
+    (typeof resolvedRateCurrency?.symbol === 'string' && resolvedRateCurrency.symbol
+      ? resolvedRateCurrency.symbol
+      : 'Bs.');
+
+  const businessName =
+    businessNameProp ?? state?.invoiceTemplate?.businessName ?? 'Génesis Comercial';
+  const businessTaxId =
+    businessTaxIdProp ?? state?.invoiceTemplate?.taxId ?? 'J-40123456-7';
+  const isDark =
+    typeof isDarkProp === 'boolean'
+      ? isDarkProp
+      : typeof darkMode === 'boolean'
+      ? darkMode
+      : typeof state?.darkMode === 'boolean'
+      ? state.darkMode
+      : true;
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const ledgerRows = useMemo<LedgerEntry[]>(() => {
