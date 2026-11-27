@@ -180,10 +180,11 @@ export default function GeneralReportsPanel({
 
     filteredPurchaseTxs.forEach((tx) => {
       const absAmount = Math.abs(tx.amount);
+      const merchantLower = (tx.merchant || '').toLowerCase();
       const matchedProduct = products.find(
         (p) =>
-          tx.merchant.toLowerCase().includes((p.name || '').toLowerCase()) ||
-          tx.merchant.toLowerCase().includes((p.sku || '').toLowerCase())
+          merchantLower.includes((p.name || '').toLowerCase()) ||
+          merchantLower.includes((p.sku || '').toLowerCase())
       );
       const unitCost = matchedProduct ? matchedProduct.costPrice : absAmount;
       const qty =
@@ -197,7 +198,7 @@ export default function GeneralReportsPanel({
         operationType: 'Compra',
         reference: tx.id.toUpperCase(),
         sku: matchedProduct?.sku || 'CMP-GEN',
-        productName: matchedProduct?.name || tx.merchant,
+        productName: matchedProduct?.name || tx.merchant || 'Compra General',
         quantity: qty,
         unitPrice: Number(unitCost.toFixed(2)),
         subtotal: Number(absAmount.toFixed(2)),
@@ -738,7 +739,8 @@ export default function GeneralReportsPanel({
               ];
               const csvContent = rows
                 .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
-                .join('\n');
+                .join('
+');
               const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -814,7 +816,9 @@ export default function GeneralReportsPanel({
               </label>
               <select
                 value={simpleSubject}
-                onChange={(e) => setSimpleSubject(e.target.value as 'ventas' | 'compras')}
+                onChange={(e) =>
+                  setSimpleSubject(e.target.value as 'ventas' | 'compras' | 'gastos')
+                }
                 className={`w-full rounded-lg border px-2.5 py-2 text-xs font-medium outline-none ${
                   isDark
                     ? 'bg-[#1C212B] border-gray-700 text-white'
