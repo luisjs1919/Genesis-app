@@ -341,13 +341,32 @@ const FALLBACK_POS_STATE: GenesisState = {
   },
 };
 
+export interface PosSalesWindowProps {
+  isStandaloneWindow?: boolean;
+  onCloseModal?: () => void;
+  state?: GenesisState | null;
+  setState?: React.Dispatch<React.SetStateAction<GenesisState | null>> | React.Dispatch<any>;
+  cart?: SaleInvoiceItem[];
+  setCart?: React.Dispatch<React.SetStateAction<SaleInvoiceItem[]>>;
+  onAddProduct?: (product: ProductItem, qty?: number) => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null> | React.RefObject<any>;
+  activeRate?: unknown;
+  darkMode?: boolean;
+  onAudit?: (action: string, detail: string) => void;
+}
+
 export default function PosSalesWindow({
   isStandaloneWindow = false,
   onCloseModal,
-}: {
-  isStandaloneWindow?: boolean;
-  onCloseModal?: () => void;
-}) {
+  state: externalState,
+  setState: externalSetState,
+  cart: externalCart,
+  setCart: externalSetCart,
+  onAddProduct: externalOnAddProduct,
+  searchInputRef: externalSearchInputRef,
+  darkMode: externalDarkMode,
+  onAudit,
+}: PosSalesWindowProps) {
   const [state, setState] = useState<GenesisState | null>(null);
   const [posScanInput, setPosScanInput] = useState('');
   const [posScanFeedback, setPosScanFeedback] = useState<string | null>(null);
@@ -356,7 +375,9 @@ export default function PosSalesWindow({
   const [editingQtyProductId, setEditingQtyProductId] = useState<string | null>(null);
   const [editingQtyDraft, setEditingQtyDraft] = useState<string>('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('Todas');
-  const [invoiceItems, setInvoiceItems] = useState<SaleInvoiceItem[]>([]);
+  const [internalInvoiceItems, setInternalInvoiceItems] = useState<SaleInvoiceItem[]>([]);
+  const invoiceItems = externalCart !== undefined ? externalCart : internalInvoiceItems;
+  const setInvoiceItems = externalSetCart !== undefined ? externalSetCart : setInternalInvoiceItems;
   const [, setInvoiceNote] = useState('Cliente General');
   const [customInvoiceMode, setCustomInvoiceMode] = useState(false);
   const [custFullName, setCustFullName] = useState('');
@@ -406,7 +427,8 @@ export default function PosSalesWindow({
   const [returnNotice, setReturnNotice] = useState<string | null>(null);
   const [returnError, setReturnError] = useState<string | null>(null);
 
-  const posInputRef = useRef<HTMLInputElement | null>(null);
+  const localPosInputRef = useRef<HTMLInputElement | null>(null);
+  const posInputRef = externalSearchInputRef || localPosInputRef;
   const invoiceFormRef = useRef<HTMLFormElement | null>(null);
 
   const loadFromStorage = () => {
@@ -501,6 +523,11 @@ export default function PosSalesWindow({
 
   const persistState = (next: GenesisState) => {
     setState(next);
+    if (externalSetState) {
+      try {
+        externalSetState(next);
+      } catch {}
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }));
@@ -789,6 +816,16 @@ export default function PosSalesWindow({
       setPosNextMultiplier(1);
     }
 
+    if (externalOnAddProduct) {
+      try {
+        externalOnAddProduct(product, qtyToAdd);
+      } catch {}
+    }
+    if (onAudit) {
+      try {
+        onAudit('POS_ADD_ITEM', `Agregado x${qtyToAdd}: ${product.name}`);
+      } catch {}
+    }
     setPosLowStockAlert(isLowStock);
     setPosScanFeedback(
       isLowStock
@@ -1333,7 +1370,7 @@ export default function PosSalesWindow({
     );
   }
 
-  const isDark = state.darkMode;
+  const isDark = typeof externalDarkMode === 'boolean' ? externalDarkMode : state.darkMode;
 
   const palette = isDark
     ? {
