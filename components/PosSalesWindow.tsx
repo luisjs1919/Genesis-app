@@ -717,7 +717,7 @@ export default function PosSalesWindow({
       products: updatedProducts,
       transactions: [creditNoteTx, ...txList],
       auditLog: [
-        ...(state.auditLog || []),
+        ...(Array.isArray((state as unknown as { auditLog?: unknown[] }).auditLog) ? (state as unknown as { auditLog: unknown[] }).auditLog : []),
         {
           id: `aud-nc-${Date.now()}`,
           correlative: `AUD-${Date.now().toString().slice(-6)}`,
