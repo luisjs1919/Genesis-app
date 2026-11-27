@@ -61,20 +61,72 @@ function makeThumbDataUri(label: string, bg: string, fg = '#ffffff') {
 
 const IVA_RATE = 0.16;
 
-function calcProfitMarginPercent(costPrice: number, salePrice: number): number {
-  if (costPrice <= 0) return salePrice > 0 ? 100 : 0;
-  return ((salePrice - costPrice) / costPrice) * 100;
+function getProductUnitInfo(
+  product?: Partial<ProductItem> & {
+    unit?: string;
+    unitOfMeasure?: string;
+    measurementUnit?: string;
+    unidad?: string;
+    unidadMedida?: string;
+    weightOrQty?: number;
+    unitWeight?: number;
+  },
+  invoiceItem?: Partial<SaleInvoiceItem> & {
+    unit?: string;
+    unitOfMeasure?: string;
+    measurementUnit?: string;
+    unidad?: string;
+    unidadMedida?: string;
+  }
+): { shortLabel: string; fullLabel: string } {
+  const raw = String(
+    invoiceItem?.unit ||
+      invoiceItem?.unitOfMeasure ||
+      invoiceItem?.measurementUnit ||
+      invoiceItem?.unidad ||
+      invoiceItem?.unidadMedida ||
+      product?.unit ||
+      product?.unitOfMeasure ||
+      product?.measurementUnit ||
+      product?.unidad ||
+      product?.unidadMedida ||
+      ''
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!raw || raw === 'unidad' || raw === 'unidades' || raw === 'ud' || raw === 'uds' || raw === 'unit') {
+    return { shortLabel: 'ud', fullLabel: 'Unidad' };
+  }
+  if (raw.includes('litro') || raw === 'l' || raw === 'lt' || raw === 'lts') {
+    return { shortLabel: 'L', fullLabel: 'Litros (L)' };
+  }
+  if (raw.includes('kilo') || raw.includes('peso') || raw === 'kg' || raw === 'kgs') {
+    return { shortLabel: 'kg', fullLabel: 'Peso (kg)' };
+  }
+  if (raw.includes('gramo') || raw === 'g' || raw === 'gr' || raw === 'grs') {
+    return { shortLabel: 'g', fullLabel: 'Gramos (g)' };
+  }
+  if (raw.includes('mililitro') || raw === 'ml') {
+    return { shortLabel: 'ml', fullLabel: 'Mililitros (ml)' };
+  }
+  if (raw.includes('metro') || raw === 'm' || raw === 'mt' || raw === 'mts') {
+    return { shortLabel: 'm', fullLabel: 'Metros (m)' };
+  }
+  return {
+    shortLabel: raw.slice(0, 6),
+    fullLabel:
+      invoiceItem?.unit ||
+      invoiceItem?.unitOfMeasure ||
+      product?.unit ||
+      product?.unitOfMeasure ||
+      raw,
+  };
 }
 
 function getEffectiveUnitTotal(unitPrice: number, hasIva?: boolean): number {
   return hasIva ? unitPrice * (1 + IVA_RATE) : unitPrice;
 }
-
-const PAYMENT_ACCOUNT_CATEGORIES: PaymentAccountCategory[] = [
-  'Cuenta Principal',
-  'Billetera Digital',
-  'Efectivo',
-];
 
 function resolveAccountIdForCategory(
   accounts: { id: string; name: string; type: string }[],
@@ -110,113 +162,15 @@ function isCashPaymentMethod(methodName: string, category?: PaymentAccountCatego
   return category === 'Efectivo' || /efectivo/i.test(methodName || '');
 }
 
-type OperatorPermissionKey =
-  | 'dashboard'
-  | 'ventas'
-  | 'productos'
-  | 'categoria_de_productos'
-  | 'cuentas_por_cobrar'
-  | 'cuentas_por_pagar'
-  | 'auditoria_general'
-  | 'proveedores'
-  | 'clientes_afiliados'
-  | 'cierre_de_caja'
-  | 'cuentas_de_operadores'
-  | 'monedas'
-  | 'tasa_de_cambio'
-  | 'tipo_de_pago'
-  | 'factura'
-  | 'gastos_generales';
-
-type OperatorRoleType = 'Administrador' | 'Gerente' | 'Operador' | 'Admin' | 'Manager';
-
 interface OperatorAccountItem {
   id: string;
   operatorName: string;
   role: string;
   assignedAccount?: string;
   active?: boolean;
-  permissions?: OperatorPermissionKey[];
+  permissions?: string[];
   pin?: string;
 }
-
-const ALL_OPERATOR_PERMISSIONS: { key: OperatorPermissionKey; label: string; group: 'general' | 'operations' }[] = [
-  { key: 'dashboard', label: 'Tablero / Espacios', group: 'general' },
-  { key: 'ventas', label: 'Ventas', group: 'operations' },
-  { key: 'productos', label: 'Productos', group: 'operations' },
-  { key: 'proveedores', label: 'Proveedores', group: 'operations' },
-  { key: 'clientes_afiliados', label: 'Clientes afiliados', group: 'operations' },
-  { key: 'cierre_de_caja', label: 'Cierre de caja', group: 'operations' },
-  { key: 'cuentas_de_operadores', label: 'Cuentas de operadores', group: 'operations' },
-  { key: 'monedas', label: 'Monedas', group: 'operations' },
-  { key: 'tasa_de_cambio', label: 'Tasa de cambio', group: 'operations' },
-  { key: 'tipo_de_pago', label: 'Tipo de pago', group: 'operations' },
-  { key: 'factura', label: 'Factura', group: 'operations' },
-  { key: 'gastos_generales', label: 'Gastos generales', group: 'operations' },
-];
-
-const ROLE_DEFAULT_PERMISSIONS: Partial<Record<OperatorRoleType, OperatorPermissionKey[]>> = {
-  Administrador: ALL_OPERATOR_PERMISSIONS.map((p) => p.key),
-  Gerente: [
-    'dashboard',
-    'ventas',
-    'productos',
-    'proveedores',
-    'clientes_afiliados',
-    'cierre_de_caja',
-    'monedas',
-    'tasa_de_cambio',
-    'tipo_de_pago',
-    'factura',
-  ],
-  Operador: ['ventas'],
-};
-
-function normalizeOperatorRole(role?: string): OperatorRoleType {
-  if (role === 'Administrador' || role === 'Admin') return 'Administrador';
-  if (role === 'Gerente' || role === 'Manager') return 'Gerente';
-  return 'Operador';
-}
-
-function getEffectiveOperatorPermissions(op?: OperatorAccountItem): OperatorPermissionKey[] {
-  if (!op) return ALL_OPERATOR_PERMISSIONS.map((p) => p.key);
-  const role = normalizeOperatorRole(op.role);
-  if (role === 'Administrador') return ALL_OPERATOR_PERMISSIONS.map((p) => p.key);
-  if (Array.isArray(op.permissions)) {
-    return op.permissions;
-  }
-  return ROLE_DEFAULT_PERMISSIONS[role] || ['ventas'];
-}
-
-const fileToCompressedDataUri = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const size = 160;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(String(reader.result || ''));
-          return;
-        }
-        const scale = Math.max(size / img.width, size / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        const dx = (size - w) / 2;
-        const dy = (size - h) / 2;
-        ctx.drawImage(img, dx, dy, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
-      };
-      img.onerror = reject;
-      img.src = String(reader.result || '');
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 
 const FALLBACK_POS_STATE: GenesisState = {
   darkMode: false,
@@ -368,6 +322,7 @@ const FALLBACK_POS_STATE: GenesisState = {
   currencies: [
     { id: 'cur-usd', code: 'USD', name: 'Dólar Estadounidense', symbol: '$', rateToUsd: 1, isBase: true },
     { id: 'cur-ves', code: 'VES', name: 'Bolívar Digital', symbol: 'Bs.', rateToUsd: 45 },
+    { id: 'cur-cop', code: 'COP', name: 'Peso Colombiano', symbol: 'COP$', rateToUsd: 4200 },
   ],
   affiliatedCustomers: [],
   invoiceTemplate: {
@@ -386,7 +341,6 @@ const FALLBACK_POS_STATE: GenesisState = {
   },
 };
 
-
 export default function PosSalesWindow({
   isStandaloneWindow = false,
   onCloseModal,
@@ -403,7 +357,7 @@ export default function PosSalesWindow({
   const [editingQtyDraft, setEditingQtyDraft] = useState<string>('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('Todas');
   const [invoiceItems, setInvoiceItems] = useState<SaleInvoiceItem[]>([]);
-  const [invoiceNote, setInvoiceNote] = useState('Cliente General');
+  const [, setInvoiceNote] = useState('Cliente General');
   const [customInvoiceMode, setCustomInvoiceMode] = useState(false);
   const [custFullName, setCustFullName] = useState('');
   const [custTaxOrId, setCustTaxOrId] = useState('');
@@ -441,12 +395,30 @@ export default function PosSalesWindow({
   const [switchOpPinInput, setSwitchOpPinInput] = useState<string>('');
   const [switchOpError, setSwitchOpError] = useState<string | null>(null);
 
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [tenderedAmountDraft, setTenderedAmountDraft] = useState<string>('');
+  const [tenderedCurrencyMode, setTenderedCurrencyMode] = useState<'USD' | 'ACTIVE'>('USD');
+  const [paymentModalError, setPaymentModalError] = useState<string | null>(null);
+  const [bypassPaymentModalOnce, setBypassPaymentModalOnce] = useState<boolean>(false);
+
+  const [returnSaleId, setReturnSaleId] = useState<string>('');
+  const [returnAdminPin, setReturnAdminPin] = useState<string>('');
+  const [returnNotice, setReturnNotice] = useState<string | null>(null);
+  const [returnError, setReturnError] = useState<string | null>(null);
+
   const posInputRef = useRef<HTMLInputElement | null>(null);
+  const invoiceFormRef = useRef<HTMLFormElement | null>(null);
 
   const loadFromStorage = () => {
     try {
       const raw = localStorage.getItem('genesis_app_v13_state') || localStorage.getItem('genesis_app_v12_state');
       const parsed = raw ? JSON.parse(raw) : { ...FALLBACK_POS_STATE };
+      if (Array.isArray(parsed.currencies) && !parsed.currencies.some((c: { code?: string }) => c?.code === 'COP')) {
+        parsed.currencies = [
+          ...parsed.currencies,
+          { id: 'cur-cop', code: 'COP', name: 'Peso Colombiano', symbol: 'COP$', rateToUsd: 4200 },
+        ];
+      }
       if (Array.isArray(parsed.paymentMethods) && !parsed.paymentMethods.some((p: { name?: string }) => /cashea/i.test(String(p?.name || '')))) {
         parsed.paymentMethods = [
           ...parsed.paymentMethods,
@@ -551,14 +523,6 @@ export default function PosSalesWindow({
     return Array.from(new Set(pins));
   }, [state]);
 
-  const isCurrentUserAdmin = useMemo(() => {
-    if (!state) return false;
-    const activeOp = (state.operatorAccounts || []).find(
-      (op) => op.id === state.currentOperatorId
-    );
-    return String(activeOp?.role || '') === 'Administrador' || String(activeOp?.role || '') === 'Admin';
-  }, [state]);
-
   const validateAdminSecret = (pin: string): boolean => {
     const clean = pin.trim();
     if (!clean) return false;
@@ -568,18 +532,114 @@ export default function PosSalesWindow({
     return allowed.includes(clean);
   };
 
+  const activeRateCurrency = useMemo(() => {
+    if (!state) return null;
+    return (
+      state.currencies.find((c) => c.code === state.activeRateCurrencyCode) ||
+      state.currencies.find((c) => !c.isBase) ||
+      state.currencies[0]
+    );
+  }, [state]);
 
+  const activeRateValue = activeRateCurrency?.rateToUsd ?? 1;
+  const activeRateSymbol = activeRateCurrency?.symbol ?? '';
+  const [billingMode, setBillingMode] = useState<'unidad' | 'medida'>('unidad');
+  const [itemMeasureValues, setItemMeasureValues] = useState<Record<string, number>>({});
 
-  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
-  const [tenderedAmountDraft, setTenderedAmountDraft] = useState<string>('');
-  const [tenderedCurrencyMode, setTenderedCurrencyMode] = useState<'USD' | 'ACTIVE'>('USD');
-  const [paymentModalError, setPaymentModalError] = useState<string | null>(null);
-  const [bypassPaymentModalOnce, setBypassPaymentModalOnce] = useState<boolean>(false);
+  const selectedCurrencyObj = useMemo(() => {
+    if (!state) return { id: 'cur-usd', code: 'USD', name: 'Dólar Estadounidense', symbol: '$', rateToUsd: 1, isBase: true };
+    if (invoiceCurrency === 'COP') {
+      return (
+        state.currencies.find((c) => c.code === 'COP') || {
+          id: 'cur-cop',
+          code: 'COP',
+          name: 'Peso Colombiano',
+          symbol: 'COP$',
+          rateToUsd: 4200,
+          isBase: false,
+        }
+      );
+    }
+    return (
+      state.currencies.find((c) => c.code === invoiceCurrency) ||
+      state.currencies.find((c) => c.code === 'USD') ||
+      state.currencies[0]
+    );
+  }, [state, invoiceCurrency]);
 
-  const [returnSaleId, setReturnSaleId] = useState<string>('');
-  const [returnAdminPin, setReturnAdminPin] = useState<string>('');
-  const [returnNotice, setReturnNotice] = useState<string | null>(null);
-  const [returnError, setReturnError] = useState<string | null>(null);
+  const posCategories = useMemo(() => {
+    if (!state) return ['Todas'];
+    const baseCats = ['Químicos', 'Detalle', 'Mantenimiento', 'General'];
+    const fromProducts = state.products.map((p) => p.category).filter(Boolean);
+    return ['Todas', ...Array.from(new Set([...baseCats, ...fromProducts]))];
+  }, [state]);
+
+  const filteredPosProducts = useMemo(() => {
+    if (!state) return [];
+    const term = posScanInput.trim().toLowerCase();
+    return state.products.filter((prod) => {
+      const matchesCat = selectedPosCategory === 'Todas' || prod.category === selectedPosCategory;
+      const matchesTerm =
+        !term ||
+        prod.name.toLowerCase().includes(term) ||
+        prod.barcode.toLowerCase().includes(term) ||
+        prod.sku.toLowerCase().includes(term);
+      return matchesCat && matchesTerm;
+    });
+  }, [state, selectedPosCategory, posScanInput]);
+
+  const getItemBillingFactor = (item: SaleInvoiceItem) => {
+    if (billingMode === 'medida') {
+      const m = itemMeasureValues[item.productId];
+      return typeof m === 'number' && !isNaN(m) && m > 0 ? m : Math.max(0.01, Number(item.quantity) || 1);
+    }
+    return Math.max(0, Number(item.quantity) || 0);
+  };
+
+  const invoiceBaseTotal = useMemo(() => {
+    return invoiceItems.reduce((sum, item) => sum + item.unitPrice * getItemBillingFactor(item), 0);
+  }, [invoiceItems, billingMode, itemMeasureValues]);
+
+  const invoiceIvaTotal = useMemo(() => {
+    return invoiceItems.reduce(
+      (sum, item) => sum + (item.hasIva ? item.unitPrice * getItemBillingFactor(item) * IVA_RATE : 0),
+      0
+    );
+  }, [invoiceItems, billingMode, itemMeasureValues]);
+
+  const invoiceSubtotal = useMemo(() => {
+    return invoiceBaseTotal + invoiceIvaTotal;
+  }, [invoiceBaseTotal, invoiceIvaTotal]);
+
+  const invoiceDiscountAmount = useMemo(() => {
+    if (appliedDiscountPct <= 0 || invoiceSubtotal <= 0) return 0;
+    return Number(((invoiceSubtotal * appliedDiscountPct) / 100).toFixed(2));
+  }, [appliedDiscountPct, invoiceSubtotal]);
+
+  const invoiceAfterDiscountTotal = useMemo(() => {
+    return Math.max(0, Number((invoiceSubtotal - invoiceDiscountAmount).toFixed(2)));
+  }, [invoiceSubtotal, invoiceDiscountAmount]);
+
+  const activePaymentMethodObj = useMemo(() => {
+    return (state?.paymentMethods || []).find((pm) => pm.name === invoicePaymentType);
+  }, [state?.paymentMethods, invoicePaymentType]);
+
+  const isCasheaPaymentActive = /cashea/i.test(invoicePaymentType);
+
+  const casheaFeePct = useMemo(() => {
+    if (!isCasheaPaymentActive) return 0;
+    const rawFee = Number(activePaymentMethodObj?.feePercent ?? 0);
+    return isNaN(rawFee) || rawFee < 0 ? 0 : rawFee;
+  }, [isCasheaPaymentActive, activePaymentMethodObj]);
+
+  const casheaFeeAmount = useMemo(() => {
+    if (!isCasheaPaymentActive || casheaFeePct <= 0 || invoiceAfterDiscountTotal <= 0) return 0;
+    return Number(((invoiceAfterDiscountTotal * casheaFeePct) / 100).toFixed(2));
+  }, [isCasheaPaymentActive, casheaFeePct, invoiceAfterDiscountTotal]);
+
+  const invoiceFinalTotal = useMemo(() => {
+    return Math.max(0, Number((invoiceAfterDiscountTotal + casheaFeeAmount).toFixed(2)));
+  }, [invoiceAfterDiscountTotal, casheaFeeAmount]);
 
   const handleEmitCreditNoteReturn = () => {
     if (!state) return;
@@ -655,7 +715,6 @@ export default function PosSalesWindow({
       setCreditInitialPaidDraft('0');
       return;
     }
-    // Siempre solicitar clave de administrador para habilitar crédito
     setCreditAuthorized(false);
     setCreditAuthModalOpen(true);
   };
@@ -672,81 +731,6 @@ export default function PosSalesWindow({
     }
   };
 
-  const activeRateCurrency = useMemo(() => {
-    if (!state) return null;
-    return (
-      state.currencies.find((c) => c.code === state.activeRateCurrencyCode) ||
-      state.currencies.find((c) => !c.isBase) ||
-      state.currencies[0]
-    );
-  }, [state]);
-
-  const posCategories = useMemo(() => {
-    if (!state) return ['Todas'];
-    const baseCats = ['Químicos', 'Detalle', 'Mantenimiento', 'General'];
-    const fromProducts = state.products.map((p) => p.category).filter(Boolean);
-    return ['Todas', ...Array.from(new Set([...baseCats, ...fromProducts]))];
-  }, [state]);
-
-  const filteredPosProducts = useMemo(() => {
-    if (!state) return [];
-    const term = posScanInput.trim().toLowerCase();
-    return state.products.filter((prod) => {
-      const matchesCat = selectedPosCategory === 'Todas' || prod.category === selectedPosCategory;
-      const matchesTerm =
-        !term ||
-        prod.name.toLowerCase().includes(term) ||
-        prod.barcode.toLowerCase().includes(term) ||
-        prod.sku.toLowerCase().includes(term);
-      return matchesCat && matchesTerm;
-    });
-  }, [state, selectedPosCategory, posScanInput]);
-
-  const invoiceBaseTotal = useMemo(() => {
-    return invoiceItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  }, [invoiceItems]);
-
-  const invoiceIvaTotal = useMemo(() => {
-    return invoiceItems.reduce(
-      (sum, item) => sum + (item.hasIva ? item.unitPrice * item.quantity * IVA_RATE : 0),
-      0
-    );
-  }, [invoiceItems]);
-
-  const invoiceSubtotal = useMemo(() => {
-    return invoiceBaseTotal + invoiceIvaTotal;
-  }, [invoiceBaseTotal, invoiceIvaTotal]);
-
-  const invoiceDiscountAmount = useMemo(() => {
-    if (appliedDiscountPct <= 0 || invoiceSubtotal <= 0) return 0;
-    return Number(((invoiceSubtotal * appliedDiscountPct) / 100).toFixed(2));
-  }, [appliedDiscountPct, invoiceSubtotal]);
-
-  const invoiceAfterDiscountTotal = useMemo(() => {
-    return Math.max(0, Number((invoiceSubtotal - invoiceDiscountAmount).toFixed(2)));
-  }, [invoiceSubtotal, invoiceDiscountAmount]);
-
-  const activePaymentMethodObj = useMemo(() => {
-    return (state?.paymentMethods || []).find((pm) => pm.name === invoicePaymentType);
-  }, [state?.paymentMethods, invoicePaymentType]);
-
-  const isCasheaPaymentActive = /cashea/i.test(invoicePaymentType);
-
-  const casheaFeePct = useMemo(() => {
-    if (!isCasheaPaymentActive) return 0;
-    const rawFee = Number(activePaymentMethodObj?.feePercent ?? 0);
-    return isNaN(rawFee) || rawFee < 0 ? 0 : rawFee;
-  }, [isCasheaPaymentActive, activePaymentMethodObj]);
-
-  const casheaFeeAmount = useMemo(() => {
-    if (!isCasheaPaymentActive || casheaFeePct <= 0 || invoiceAfterDiscountTotal <= 0) return 0;
-    return Number(((invoiceAfterDiscountTotal * casheaFeePct) / 100).toFixed(2));
-  }, [isCasheaPaymentActive, casheaFeePct, invoiceAfterDiscountTotal]);
-
-  const invoiceFinalTotal = useMemo(() => {
-    return Math.max(0, Number((invoiceAfterDiscountTotal + casheaFeeAmount).toFixed(2)));
-  }, [invoiceAfterDiscountTotal, casheaFeeAmount]);
-
   const handleApplyInvoiceDiscount = (e: React.FormEvent) => {
     e.preventDefault();
     setDiscountError(null);
@@ -757,11 +741,7 @@ export default function PosSalesWindow({
       setDiscountError('Ingresa un porcentaje válido mayor a 0 y hasta 100%.');
       return;
     }
-    if (authorizedAdminPins.length === 0) {
-      setDiscountError('Primero configura una clave de administrador en Cuentas de operadores.');
-      return;
-    }
-    if (!authorizedAdminPins.includes(discountAuthPinInput.trim())) {
+    if (!validateAdminSecret(discountAuthPinInput)) {
       setDiscountError('Clave de administrador incorrecta. No se aplicó el descuento.');
       return;
     }
@@ -974,10 +954,16 @@ export default function PosSalesWindow({
     if (!state || invoiceItems.length === 0 || invoiceSubtotal <= 0) return;
 
     if (!isCreditSale && !bypassPaymentModalOnce) {
+      const useSelectedNonUsd = invoiceCurrency !== 'USD' && (selectedCurrencyObj?.rateToUsd ?? 1) > 0;
       const useActive = Boolean(activeRateCurrency && !activeRateCurrency.isBase);
-      const initialMode: 'USD' | 'ACTIVE' = useActive ? 'ACTIVE' : 'USD';
-      const initialAmt = useActive
-        ? Number((invoiceFinalTotal * activeRateValue).toFixed(2))
+      const initialMode: 'USD' | 'ACTIVE' = useSelectedNonUsd || useActive ? 'ACTIVE' : 'USD';
+      const rateForPrefill = useSelectedNonUsd
+        ? Number(selectedCurrencyObj?.rateToUsd || 1)
+        : useActive
+        ? activeRateValue
+        : 1;
+      const initialAmt = initialMode === 'ACTIVE'
+        ? Number((invoiceFinalTotal * rateForPrefill).toFixed(2))
         : Number(invoiceFinalTotal.toFixed(2));
       setTenderedCurrencyMode(initialMode);
       setTenderedAmountDraft(String(initialAmt));
@@ -1226,6 +1212,15 @@ export default function PosSalesWindow({
       })
       .join('');
 
+    const extraFooterHtml = (() => {
+      if (isThermal || tpl.showExtraFooterOnCarta === false) return '';
+      const parts: string[] = [];
+      if (tpl.bankAccountInfo) parts.push(`<div><strong>Banco / Pago:</strong> ${tpl.bankAccountInfo}</div>`);
+      if (tpl.socialMediaInfo) parts.push(`<div><strong>Redes / Contacto:</strong> ${tpl.socialMediaInfo}</div>`);
+      if (tpl.paymentTermsInfo) parts.push(`<div><strong>Condiciones / Notas:</strong> ${tpl.paymentTermsInfo}</div>`);
+      return parts.length > 0 ? `<div class="extra-footer">${parts.join('')}</div>` : '';
+    })();
+
     const renderSlip = (copyLabel: string) => `
       <div class="slip ${isThermal ? 'slip-80mm' : 'slip-carta'}">
         <div class="slip-top">
@@ -1271,13 +1266,7 @@ export default function PosSalesWindow({
           <span>$${sale.total.toFixed(2)}</span>
         </div>
         ${tpl.footerNote ? `<div class="footer">${tpl.footerNote}</div>` : ''}
-        ${!isThermal && (tpl as any).showExtraFooterOnCarta !== false ? `
-          <div class="extra-footer">
-            ${(tpl as any).bankAccountInfo ? `<div><strong>Banco / Pago:</strong> ${(tpl as any).bankAccountInfo}</div>` : ''}
-            ${(tpl as any).socialMediaInfo ? `<div><strong>Redes / Contacto:</strong> ${(tpl as any).socialMediaInfo}</div>` : ''}
-            ${(tpl as any).paymentTermsInfo ? `<div><strong>Condiciones / Notas:</strong> ${(tpl as any).paymentTermsInfo}</div>` : ''}
-          </div>
-        ` : ''}
+        ${extraFooterHtml}
       </div>`;
 
     const bodyHtml = isThermal
@@ -1312,8 +1301,11 @@ export default function PosSalesWindow({
     .meta { font-size: 10.5px; color: #475569; margin-top: 2px; }
     .banner { margin: 6px 0; padding: 4px 8px; background: #f1f5f9; border-radius: 5px; font-size: 10px; font-weight: 700; text-align: center; }
     table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
-     .breakdown { margin-top: 6px; padding-top: 5px; border-top: 1px dashed #cbd5e1; font-size: 10.5px; color: #334155; display: flex; flex-direction: column; gap: 2px; } .breakdown-row { display: flex; justify-content: space-between; } .total { margin-top: 6px; padding-top: 6px; border-top: 2px solid #0f172a; display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; }
-    .footer { margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1; font-size: 9.5px; color: #475569; text-align: center; white-space: pre-line; } .extra-footer { margin-top: 6px; padding-top: 5px; border-top: 1px dotted #94a3b8; font-size: 9px; color: #334155; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+    .breakdown { margin-top: 6px; padding-top: 5px; border-top: 1px dashed #cbd5e1; font-size: 10.5px; color: #334155; display: flex; flex-direction: column; gap: 2px; }
+    .breakdown-row { display: flex; justify-content: space-between; }
+    .total { margin-top: 6px; padding-top: 6px; border-top: 2px solid #0f172a; display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; }
+    .footer { margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1; font-size: 9.5px; color: #475569; text-align: center; white-space: pre-line; }
+    .extra-footer { margin-top: 6px; padding-top: 5px; border-top: 1px dotted #94a3b8; font-size: 9px; color: #334155; display: flex; flex-direction: column; gap: 2px; text-align: left; }
     @media print { body { padding: 0; } .ticket-80mm, .sheet-carta { max-width: 100%; width: 100%; } }
   </style>
 </head>
@@ -1342,8 +1334,6 @@ export default function PosSalesWindow({
   }
 
   const isDark = state.darkMode;
-  const activeRateValue = activeRateCurrency?.rateToUsd ?? 1;
-  const activeRateSymbol = activeRateCurrency?.symbol ?? '';
 
   const palette = isDark
     ? {
@@ -1642,7 +1632,6 @@ export default function PosSalesWindow({
                       </option>
                     ))}
                   </select>
-
                 </div>
               )}
             </div>
@@ -2008,6 +1997,7 @@ export default function PosSalesWindow({
 
           {/* Panel Derecho: Factura y Cobro */}
           <form
+            ref={invoiceFormRef}
             onSubmit={handleCompleteSale}
             className="lg:col-span-5 rounded-2xl border p-3.5 sm:p-4 space-y-3"
             style={{
@@ -2042,16 +2032,74 @@ export default function PosSalesWindow({
                   </p>
                 </div>
               </div>
-              {invoiceItems.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setInvoiceItems([])}
-                  className="text-[10px] font-extrabold px-2 py-1 rounded-lg transition cursor-pointer"
-                  style={{ backgroundColor: '#DBEAFE', color: '#1E3A8A' }}
-                >
-                  Vaciar
-                </button>
-              )}
+              <div className="flex items-center gap-1.5">
+                {(() => {
+                  const firstProd = invoiceItems[0]
+                    ? state.products.find((p) => p.id === invoiceItems[0].productId)
+                    : undefined;
+                  const modeUnit = getProductUnitInfo(firstProd, invoiceItems[0]);
+                  const medidaLabel = modeUnit.shortLabel !== 'ud' ? `Medida (${modeUnit.shortLabel})` : 'Por medida';
+                  return (
+                    <div
+                      className="inline-flex rounded-lg border p-0.5 text-[10px] font-extrabold"
+                      style={{ backgroundColor: palette.inputBg, borderColor: '#2563EB' }}
+                      title="Elegir si se cobra por unidad o por la unidad/medida configurada en el producto"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setBillingMode('unidad')}
+                        className="px-2 py-0.5 rounded-md cursor-pointer transition"
+                        style={{
+                          backgroundColor: billingMode === 'unidad' ? '#1D4ED8' : 'transparent',
+                          color: billingMode === 'unidad' ? '#FFFFFF' : palette.textPrimary,
+                        }}
+                      >
+                        Unidad
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBillingMode('medida');
+                          setItemMeasureValues((prev) => {
+                            const next = { ...prev };
+                            invoiceItems.forEach((it) => {
+                              const prodObj = state.products.find((p) => p.id === it.productId) as
+                                | (ProductItem & { weightOrQty?: number; unitWeight?: number })
+                                | undefined;
+                              const defaultVal =
+                                Number(prodObj?.weightOrQty || prodObj?.unitWeight || it.quantity || 1) || 1;
+                              if (next[it.productId] === undefined) {
+                                next[it.productId] = defaultVal;
+                              }
+                            });
+                            return next;
+                          });
+                        }}
+                        className="px-2 py-0.5 rounded-md cursor-pointer transition"
+                        style={{
+                          backgroundColor: billingMode === 'medida' ? '#1D4ED8' : 'transparent',
+                          color: billingMode === 'medida' ? '#FFFFFF' : palette.textPrimary,
+                        }}
+                      >
+                        {medidaLabel}
+                      </button>
+                    </div>
+                  );
+                })()}
+                {invoiceItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceItems([]);
+                      setItemMeasureValues({});
+                    }}
+                    className="text-[10px] font-extrabold px-2 py-1 rounded-lg transition cursor-pointer"
+                    style={{ backgroundColor: '#DBEAFE', color: '#1E3A8A' }}
+                  >
+                    Vaciar
+                  </button>
+                )}
+              </div>
             </div>
 
             <div
@@ -2067,7 +2115,12 @@ export default function PosSalesWindow({
                 </div>
               ) : (
                 invoiceItems.map((item) => {
-                  const lineTotal = getEffectiveUnitTotal(item.unitPrice, item.hasIva) * item.quantity;
+                  const prodMatch = state.products.find((p) => p.id === item.productId) as
+                    | (ProductItem & { weightOrQty?: number; unitWeight?: number })
+                    | undefined;
+                  const unitInfo = getProductUnitInfo(prodMatch, item);
+                  const billingFactor = getItemBillingFactor(item);
+                  const lineTotal = getEffectiveUnitTotal(item.unitPrice, item.hasIva) * billingFactor;
                   return (
                     <div
                       key={item.productId}
@@ -2095,10 +2148,37 @@ export default function PosSalesWindow({
                           className="text-[10px] font-semibold tabular-nums"
                           style={{ color: palette.textSecondary }}
                         >
-                          ${item.unitPrice.toFixed(2)} base
+                          ${item.unitPrice.toFixed(2)} {billingMode === 'medida' ? `/ ${unitInfo.shortLabel}` : 'base'}
                         </p>
                       </div>
 
+                      {billingMode === 'medida' ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={itemMeasureValues[item.productId] ?? item.quantity}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setItemMeasureValues((prev) => ({
+                                ...prev,
+                                [item.productId]: isNaN(val) ? 0 : val,
+                              }));
+                            }}
+                            className="w-16 px-1.5 py-0.5 rounded border text-right text-xs font-extrabold tabular-nums"
+                            style={{
+                              backgroundColor: palette.inputBg,
+                              borderColor: '#2563EB',
+                              color: palette.textPrimary,
+                            }}
+                            title={`Cantidad en ${unitInfo.fullLabel}`}
+                          />
+                          <span className="text-[10px] font-extrabold" style={{ color: palette.textSecondary }}>
+                            {unitInfo.shortLabel}
+                          </span>
+                        </div>
+                      ) : (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
@@ -2161,6 +2241,7 @@ export default function PosSalesWindow({
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
+                      )}
 
                       <span
                         className="w-14 text-right font-extrabold tabular-nums"
@@ -2440,6 +2521,9 @@ export default function PosSalesWindow({
                             {c.code}
                           </option>
                         ))}
+                        {!state.currencies.some((c) => c.code === 'COP') && (
+                          <option value="COP">COP</option>
+                        )}
                       </select>
                     </div>
 
@@ -2707,7 +2791,18 @@ export default function PosSalesWindow({
                     ${invoiceFinalTotal.toFixed(2)}
                   </span>
                 </div>
-                {activeRateCurrency && !activeRateCurrency.isBase && (
+                {invoiceCurrency !== 'USD' && selectedCurrencyObj && (
+                  <div
+                    className="flex justify-between font-extrabold"
+                    style={{ color: palette.textBlueAccent }}
+                  >
+                    <span>Total en {selectedCurrencyObj.code}</span>
+                    <span className="tabular-nums">
+                      {selectedCurrencyObj.symbol} {(invoiceFinalTotal * (selectedCurrencyObj.rateToUsd || 1)).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {activeRateCurrency && !activeRateCurrency.isBase && activeRateCurrency.code !== invoiceCurrency && (
                   <div
                     className="flex justify-between font-extrabold"
                     style={{ color: palette.textBlueAccent }}
@@ -2815,7 +2910,6 @@ export default function PosSalesWindow({
                   </div>
                 )}
               </div>
-
 
               {/* Devolución de Factura y Nota de Crédito con Clave Admin */}
               <div
@@ -3242,10 +3336,7 @@ export default function PosSalesWindow({
                       setPaymentModalError(null);
                       setBypassPaymentModalOnce(true);
                       window.setTimeout(() => {
-                        const formEl = document.querySelector('form');
-                        if (formEl) {
-                          formEl.requestSubmit();
-                        }
+                        invoiceFormRef.current?.requestSubmit();
                       }, 10);
                     }}
                     className="px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer"
@@ -3259,7 +3350,6 @@ export default function PosSalesWindow({
           })()}
         </div>
       )}
-
     </div>
   );
 }
