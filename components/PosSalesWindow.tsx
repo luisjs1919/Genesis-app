@@ -1084,7 +1084,7 @@ export default function PosSalesWindow({
           : `Factura POS (${totalUnits} artículos)`)
       : 'Cliente General';
 
-    const selectedPmObj = state.paymentMethods.find((pm) => pm.name === invoicePaymentType);
+    const selectedPmObj = (Array.isArray(state.paymentMethods) ? state.paymentMethods : []).find((pm) => pm.name === invoicePaymentType);
     const cashActive = isCashPaymentMethod(invoicePaymentType, selectedPmObj?.accountCategory);
     const resolvedAccountId = resolveAccountIdForCategory(
       state.accounts,
