@@ -1208,3 +1208,127 @@ export default function GeneralReportsPanel({
                                   </td>
                                   <td className="py-1.5 px-2.5 font-semibold uppercase">
                                     {row.label}
+                                  </td>
+                                  <td className="py-1.5 px-2 text-right font-semibold tabular-nums">
+                                    {row.qty}
+                                  </td>
+                                  <td className="py-1.5 px-2.5 text-right font-bold tabular-nums">
+                                    $ {row.amount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      <div className="ex-card-box p-3">
+                        <div className="flex justify-end text-[10px] ex-muted mb-1">📦</div>
+                        {renderPieChart(simpleSummary.topItems)}
+                      </div>
+
+                      <div className="ex-card-box p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-bold ex-kpi-label">
+                            {simpleSummary.accountTitle}
+                          </span>
+                          <span className="text-[10px] ex-muted">💲</span>
+                        </div>
+                        {renderAccountBar(simpleSummary.accountLabel, simpleSummary.accountAmount)}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3.5">
+                      <div className="ex-kpi-card px-4 py-3 text-center">
+                        <div className="ex-kpi-label text-[11px] font-semibold">
+                          Total Ventas Productos
+                        </div>
+                        <div className="ex-kpi-val text-base font-extrabold tabular-nums mt-1 text-emerald-700">
+                          $ {detailedSummary.totalVentasUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div className="ex-kpi-card px-4 py-3 text-center">
+                        <div className="ex-kpi-label text-[11px] font-semibold">
+                          Total Compras Productos
+                        </div>
+                        <div className="ex-kpi-val text-base font-extrabold tabular-nums mt-1 text-rose-700">
+                          $ {detailedSummary.totalComprasUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div className="ex-kpi-card px-4 py-3 text-center">
+                        <div className="ex-kpi-label text-[11px] font-semibold">
+                          Balance Neto / Unidades
+                        </div>
+                        <div className="ex-kpi-val text-sm font-extrabold tabular-nums mt-1">
+                          $ {detailedSummary.netBalanceUsd.toFixed(2)}
+                        </div>
+                        <div className="text-[10.5px] ex-muted tabular-nums">
+                          V: {detailedSummary.unitsSold} uds · C: {detailedSummary.unitsBought} uds
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="ex-pill-banner py-1.5 px-4 text-center text-[11.5px] font-bold mb-2">
+                        Comportamiento diario de movimientos ({dateFrom} al {dateTo})
+                      </div>
+                      <div className="ex-card-box p-2.5">
+                        {renderBehaviorLineChart(detailedSummary.dailySeries)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="ex-pill-banner py-1.5 px-4 text-center text-[11.5px] font-bold mb-2">
+                        Detalle producto a producto (Compras y Ventas)
+                      </div>
+                      <div className="overflow-hidden rounded-lg border border-slate-300">
+                        <table className="ex-table text-[10px]">
+                          <thead>
+                            <tr>
+                              <th className="py-1.5 px-1.5 text-left">Fecha</th>
+                              <th className="py-1.5 px-1.5 text-left">Tipo</th>
+                              <th className="py-1.5 px-1.5 text-left">SKU</th>
+                              <th className="py-1.5 px-1.5 text-left">Producto</th>
+                              <th className="py-1.5 px-1.5 text-right">Cant.</th>
+                              <th className="py-1.5 px-1.5 text-right">P. Unit</th>
+                              <th className="py-1.5 px-1.5 text-right">Subtotal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {detailedRows.map((row) => (
+                              <tr key={row.id}>
+                                <td className="py-1.5 px-1.5 tabular-nums">{row.date}</td>
+                                <td className="py-1.5 px-1.5 font-bold">{row.operationType}</td>
+                                <td className="py-1.5 px-1.5 font-mono">{row.sku}</td>
+                                <td className="py-1.5 px-1.5">{row.productName}</td>
+                                <td className="py-1.5 px-1.5 text-right tabular-nums">
+                                  {row.quantity}
+                                </td>
+                                <td className="py-1.5 px-1.5 text-right tabular-nums">
+                                  ${row.unitPrice.toFixed(2)}
+                                </td>
+                                <td className="py-1.5 px-1.5 text-right font-bold tabular-nums">
+                                  ${row.subtotal.toFixed(2)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
