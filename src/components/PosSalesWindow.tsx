@@ -684,7 +684,8 @@ export default function PosSalesWindow({
       setReturnError('Clave de administrador inválida. Se requiere clave admin para devolver factura y emitir nota de crédito.');
       return;
     }
-    const targetSale = state.sales.find((s) => s.id === returnSaleId) || state.sales[0];
+    const salesList = Array.isArray(state.sales) ? state.sales : [];
+    const targetSale = salesList.find((s) => s.id === returnSaleId) || salesList[0];
     if (!targetSale) {
       setReturnError('No hay facturas registradas disponibles para devolver.');
       return;
@@ -693,13 +694,15 @@ export default function PosSalesWindow({
     const todayStr = new Date().toISOString().slice(0, 10);
     const refundAmt = Math.abs(Number(targetSale.total || 0));
 
-    const updatedProducts = state.products.map((prod) => {
+    const productsList = Array.isArray(state.products) ? state.products : [];
+    const updatedProducts = productsList.map((prod) => {
       const matchedItems = (targetSale.items || []).filter((it) => it.productId === prod.id);
       if (matchedItems.length === 0) return prod;
       const restoredQty = matchedItems.reduce((sum, it) => sum + Math.max(0, Number(it.quantity || 0)), 0);
       return { ...prod, stock: prod.stock + restoredQty };
     });
 
+    const txList = Array.isArray(state.transactions) ? state.transactions : [];
     const creditNoteTx: Transaction = {
       id: `tx-nc-${Date.now()}`,
       date: todayStr,
@@ -712,7 +715,7 @@ export default function PosSalesWindow({
     const nextState: GenesisState = {
       ...state,
       products: updatedProducts,
-      transactions: [creditNoteTx, ...state.transactions],
+      transactions: [creditNoteTx, ...txList],
       auditLog: [
         ...(state.auditLog || []),
         {
