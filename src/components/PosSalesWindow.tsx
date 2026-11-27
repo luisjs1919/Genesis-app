@@ -933,7 +933,7 @@ export default function PosSalesWindow({
     );
   };
 
-  const affiliatedList = state?.affiliatedCustomers || [];
+  const affiliatedList = Array.isArray(state?.affiliatedCustomers) ? state.affiliatedCustomers : [];
 
   const filteredAffiliates = useMemo(() => {
     const q = affiliateSearchQuery.trim().toLowerCase();
@@ -1040,7 +1040,7 @@ export default function PosSalesWindow({
     const cleanAddr = custAddress.trim();
     const cleanPhone = custPhone.trim();
 
-    let updatedAffiliates = state.affiliatedCustomers || [];
+    let updatedAffiliates = Array.isArray(state.affiliatedCustomers) ? state.affiliatedCustomers : [];
     if (customInvoiceMode && (cleanName || cleanId || cleanPhone)) {
       const displayName = cleanName || `Cliente ${cleanId || cleanPhone}`;
       const existingIdx = updatedAffiliates.findIndex(
