@@ -1,6 +1,8 @@
 export type PaymentAccountCategory = string;
 export type CashKindOption = string;
 
+export type MeasurementUnit = 'und' | 'kg' | 'g' | 'L' | 'ml' | 'm' | 'cm';
+
 export interface ProductItem {
   id: string;
   sku?: string;
@@ -9,6 +11,7 @@ export interface ProductItem {
   price: number;
   costPrice?: number;
   stock: number;
+  unit?: MeasurementUnit;
   category?: string;
   hasIva?: boolean;
   [key: string]: unknown;
@@ -20,6 +23,8 @@ export interface SaleInvoiceItem {
   barcode?: string;
   name: string;
   quantity: number;
+  unit?: MeasurementUnit;
+  baseQuantity?: number;
   unitPrice: number;
   subtotal?: number;
   hasIva?: boolean;
