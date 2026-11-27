@@ -150,6 +150,10 @@ export default function GeneralReportsPanel({
     filteredSales.forEach((sale) => {
       const safeDate = String(sale.date || '');
       const safeTotal = Number(sale.total || 0);
+      const safeRef =
+        typeof sale.reference === 'string' && sale.reference.trim()
+          ? sale.reference
+          : String(sale.id || '');
 
       if (sale.items && sale.items.length > 0) {
         sale.items.forEach((item, idx) => {
@@ -157,42 +161,42 @@ export default function GeneralReportsPanel({
           const unitPrice = Number(item.unitPrice || 0);
           const lineTotal = Number((unitPrice * qty).toFixed(2));
           rows.push({
-            id: `${sale.id}-item-${idx}`,
+            id: `${String(sale.id || 'sale')}-item-${idx}`,
             date: safeDate,
             operationType: 'Venta',
-            reference: sale.reference || sale.id,
-            sku: item.sku || 'N/A',
-            productName: item.name,
+            reference: safeRef,
+            sku: String(item.sku || 'N/A'),
+            productName: String(item.name || 'Producto'),
             quantity: qty,
             unitPrice,
             subtotal: lineTotal,
-            paymentOrCategory: sale.paymentType || 'Contado',
+            paymentOrCategory: String(sale.paymentType || 'Contado'),
           });
         });
       } else {
         rows.push({
-          id: `${sale.id}-gen`,
+          id: `${String(sale.id || 'sale')}-gen`,
           date: safeDate,
           operationType: 'Venta',
-          reference: sale.reference || sale.id,
+          reference: safeRef,
           sku: 'GEN-VTA',
-          productName: sale.customerOrNote || 'Venta General',
+          productName: String(sale.customerOrNote || 'Venta General'),
           quantity: 1,
           unitPrice: safeTotal,
           subtotal: safeTotal,
-          paymentOrCategory: sale.paymentType || 'Contado',
+          paymentOrCategory: String(sale.paymentType || 'Contado'),
         });
       }
     });
 
     filteredPurchaseTxs.forEach((tx) => {
       const absAmount = Math.abs(Number(tx.amount || 0));
-      const merchantLower = (tx.merchant || '').toLowerCase();
+      const merchantLower = String(tx.merchant || '').toLowerCase();
       const safeProducts = products || [];
       const matchedProduct = safeProducts.find(
         (p) =>
-          merchantLower.includes((p.name || '').toLowerCase()) ||
-          merchantLower.includes((p.sku || '').toLowerCase())
+          merchantLower.includes(String(p.name || '').toLowerCase()) ||
+          merchantLower.includes(String(p.sku || '').toLowerCase())
       );
       const unitCost = matchedProduct ? Number(matchedProduct.costPrice || 0) : absAmount;
       const qty =
@@ -201,12 +205,12 @@ export default function GeneralReportsPanel({
           : 1;
 
       rows.push({
-        id: `buy-${tx.id}`,
+        id: `buy-${String(tx.id || 'tx')}`,
         date: String(tx.date || ''),
         operationType: 'Compra',
-        reference: tx.id.toUpperCase(),
-        sku: matchedProduct?.sku || 'CMP-GEN',
-        productName: matchedProduct?.name || tx.merchant || 'Compra General',
+        reference: String(tx.id || '').toUpperCase(),
+        sku: String(matchedProduct?.sku || 'CMP-GEN'),
+        productName: String(matchedProduct?.name || tx.merchant || 'Compra General'),
         quantity: qty,
         unitPrice: Number(unitCost.toFixed(2)),
         subtotal: Number(absAmount.toFixed(2)),
@@ -246,7 +250,7 @@ export default function GeneralReportsPanel({
       filteredSales.forEach((s) => {
         const saleTotal = Number(s.total || 0);
         const saleDate = String(s.date || '');
-        const method = s.paymentType || 'Efectivo';
+        const method = String(s.paymentType || 'Efectivo');
         if (!byMethod[method]) byMethod[method] = { amount: 0, count: 0 };
         byMethod[method].amount += saleTotal;
         byMethod[method].count += 1;
@@ -256,7 +260,7 @@ export default function GeneralReportsPanel({
 
         if (s.items && s.items.length > 0) {
           s.items.forEach((it) => {
-            const pName = it.name || 'Producto';
+            const pName = String(it.name || 'Producto');
             const qty = Number(it.quantity || 1);
             const unitPrice = Number(it.unitPrice || 0);
             if (!byProductSold[pName]) byProductSold[pName] = { qty: 0, amount: 0 };
@@ -264,7 +268,7 @@ export default function GeneralReportsPanel({
             byProductSold[pName].amount += unitPrice * qty;
           });
         } else {
-          const pName = s.customerOrNote || 'Venta General';
+          const pName = String(s.customerOrNote || 'Venta General');
           if (!byProductSold[pName]) byProductSold[pName] = { qty: 0, amount: 0 };
           byProductSold[pName].qty += 1;
           byProductSold[pName].amount += saleTotal;
@@ -309,7 +313,7 @@ export default function GeneralReportsPanel({
       const byDate: Record<string, number> = {};
 
       filteredPurchaseTxs.forEach((t) => {
-        const key = t.merchant || 'Compra';
+        const key = String(t.merchant || 'Compra');
         const val = Math.abs(Number(t.amount || 0));
         const txDate = String(t.date || '');
         if (!byConcept[key]) byConcept[key] = { amount: 0, count: 0 };
@@ -354,14 +358,14 @@ export default function GeneralReportsPanel({
       filteredExpenses.forEach((g) => {
         const invoiceTag = g.invoiceNumber && g.invoiceNumber !== 'S/N' ? ` [Fact. ${g.invoiceNumber}]` : '';
         const detailTag = g.notes ? ` · ${g.notes}` : '';
-        const label = `${g.reason || 'Gasto general'}${invoiceTag}${detailTag}`;
+        const label = `${String(g.reason || 'Gasto general')}${invoiceTag}${detailTag}`;
         const val = Math.abs(Number(g.amount || 0));
         if (!byReason[label]) byReason[label] = { amount: 0, count: 0 };
         byReason[label].amount += val;
         byReason[label].count += 1;
         const gDay = String(g.date || '').slice(0, 10);
         if (gDay) byDate[gDay] = (byDate[gDay] || 0) + val;
-        const mKey = g.paymentMethod || 'Efectivo';
+        const mKey = String(g.paymentMethod || 'Efectivo');
         byMethod[mKey] = (byMethod[mKey] || 0) + val;
       });
 
@@ -731,11 +735,15 @@ export default function GeneralReportsPanel({
                     s.customerOrNote ||
                     s.paymentType ||
                     'Cliente General';
+                  const refLabel =
+                    typeof s.reference === 'string' && s.reference.trim()
+                      ? s.reference
+                      : String(s.id || '');
                   return [
                     'Venta',
-                    s.date || '',
-                    s.reference || s.id,
-                    customerLabel,
+                    String(s.date || ''),
+                    refLabel,
+                    String(customerLabel),
                     saleAmt.toFixed(2),
                     (saleAmt * rateToUsd).toFixed(2),
                   ];
@@ -749,9 +757,9 @@ export default function GeneralReportsPanel({
                     'Gasto operativo';
                   return [
                     'Gasto',
-                    e.date || '',
-                    e.invoiceNumber || e.id,
-                    expLabel,
+                    String(e.date || ''),
+                    String(e.invoiceNumber || e.id || ''),
+                    String(expLabel),
                     expAmt.toFixed(2),
                     (expAmt * rateToUsd).toFixed(2),
                   ];
