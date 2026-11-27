@@ -98,10 +98,10 @@ export default function GeneralReportsPanel({
   darkMode,
   onImportSheets,
 }: GeneralReportsPanelProps) {
-  const sales = salesProp ?? state?.sales ?? [];
-  const products = productsProp ?? state?.products ?? [];
-  const transactions = transactionsProp ?? state?.transactions ?? [];
-  const generalExpenses = generalExpensesProp ?? state?.generalExpenses ?? [];
+  const sales: SaleRecord[] = salesProp ?? state?.sales ?? [];
+  const products: ProductItem[] = productsProp ?? state?.products ?? [];
+  const transactions: Transaction[] = transactionsProp ?? state?.transactions ?? [];
+  const generalExpenses: GeneralExpenseItem[] = generalExpensesProp ?? state?.generalExpenses ?? [];
 
   const resolvedRateCurrency = useMemo(() => {
     if (activeRate && typeof activeRate === 'object') return activeRate;
