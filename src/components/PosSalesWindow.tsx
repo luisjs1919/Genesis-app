@@ -544,8 +544,9 @@ export default function PosSalesWindow({
       pins.push(rawDiscountPin);
     }
     (state.operatorAccounts || []).forEach((op) => {
-      if ((String(op.role) === 'Administrador' || String(op.role) === 'Admin') && op.pin && op.pin.trim()) {
-        pins.push(op.pin.trim());
+      const opPin = op.pin ? String(op.pin).trim() : '';
+      if ((String(op.role) === 'Administrador' || String(op.role) === 'Admin') && opPin) {
+        pins.push(opPin);
       }
     });
     return Array.from(new Set(pins));
