@@ -616,8 +616,8 @@ export default function PosSalesWindow({
       const matchesTerm =
         !term ||
         prod.name.toLowerCase().includes(term) ||
-        prod.barcode.toLowerCase().includes(term) ||
-        prod.sku.toLowerCase().includes(term);
+        (prod.barcode || '').toLowerCase().includes(term) ||
+        (prod.sku || '').toLowerCase().includes(term);
       return matchesCat && matchesTerm;
     });
   }, [state, selectedPosCategory, posScanInput]);
@@ -860,7 +860,7 @@ export default function PosSalesWindow({
     }
 
     const lower = codeOrName.toLowerCase();
-    const exactBarcode = state.products.find((p) => p.barcode.toLowerCase() === lower);
+    const exactBarcode = state.products.find((p) => (p.barcode || '').toLowerCase() === lower);
     if (exactBarcode) {
       addProductToInvoice(exactBarcode, parsedQty);
       setPosScanInput('');
@@ -868,7 +868,7 @@ export default function PosSalesWindow({
       return;
     }
 
-    const exactSku = state.products.find((p) => p.sku.toLowerCase() === lower);
+    const exactSku = state.products.find((p) => (p.sku || '').toLowerCase() === lower);
     if (exactSku) {
       addProductToInvoice(exactSku, parsedQty);
       setPosScanInput('');
@@ -879,8 +879,8 @@ export default function PosSalesWindow({
     const matches = state.products.filter(
       (p) =>
         p.name.toLowerCase().includes(lower) ||
-        p.barcode.toLowerCase().includes(lower) ||
-        p.sku.toLowerCase().includes(lower)
+        (p.barcode || '').toLowerCase().includes(lower) ||
+        (p.sku || '').toLowerCase().includes(lower)
     );
 
     if (matches.length === 1) {
