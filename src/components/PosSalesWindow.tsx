@@ -709,7 +709,7 @@ export default function PosSalesWindow({
       merchant: `Nota de Crédito ${returnRef} (Dev. Factura ${targetSale.reference || targetSale.id} — ${targetSale.customerOrNote || 'Cliente General'})`,
       amount: -refundAmt,
       categoryId: 'cat-refund',
-      accountId: state.accounts?.[0]?.id || 'acc-1',
+      accountId: (Array.isArray(state.accounts) ? state.accounts[0]?.id : undefined) || 'acc-1',
     };
 
     const nextState: GenesisState = {
