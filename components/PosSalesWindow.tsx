@@ -624,7 +624,8 @@ export default function PosSalesWindow({
 
   const getItemBillingFactor = (item: SaleInvoiceItem) => {
     if (billingMode === 'medida') {
-      const m = itemMeasureValues[item.productId];
+      const pid = item.productId || '';
+      const m = pid ? itemMeasureValues[pid] : undefined;
       return typeof m === 'number' && !isNaN(m) && m > 0 ? m : Math.max(0.01, Number(item.quantity) || 1);
     }
     return Math.max(0, Number(item.quantity) || 0);
@@ -2202,12 +2203,12 @@ export default function PosSalesWindow({
                             type="number"
                             step="0.01"
                             min="0.01"
-                            value={itemMeasureValues[item.productId] ?? item.quantity}
+                            value={(item.productId ? itemMeasureValues[item.productId] : undefined) ?? item.quantity}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
                               setItemMeasureValues((prev) => ({
                                 ...prev,
-                                [item.productId]: isNaN(val) ? 0 : val,
+                                ...(item.productId ? { [item.productId]: isNaN(val) ? 0 : val } : {}),
                               }));
                             }}
                             className="w-16 px-1.5 py-0.5 rounded border text-right text-xs font-extrabold tabular-nums"
