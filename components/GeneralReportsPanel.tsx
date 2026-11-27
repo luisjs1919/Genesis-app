@@ -730,11 +730,16 @@ export default function GeneralReportsPanel({
                 ['Tipo', 'Fecha', 'Referencia', 'Detalle', 'Monto USD', `Monto (${currencySymbol})`],
                 ...filteredSales.map((s) => {
                   const saleAmt = Number(s.total || 0);
-                  const customerLabel =
-                    s.customerDetails?.fullName ||
-                    s.customerOrNote ||
-                    s.paymentType ||
-                    'Cliente General';
+                  const customerDetailsObj =
+  s.customerDetails && typeof s.customerDetails === 'object'
+    ? (s.customerDetails as { fullName?: string; name?: string })
+    : undefined;
+const customerLabel =
+  customerDetailsObj?.fullName ||
+  customerDetailsObj?.name ||
+  s.customerOrNote ||
+  s.paymentType ||
+  'Cliente General';
                   const refLabel =
                     typeof s.reference === 'string' && s.reference.trim()
                       ? s.reference
